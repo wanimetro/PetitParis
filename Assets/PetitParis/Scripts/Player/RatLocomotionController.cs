@@ -7,7 +7,7 @@ namespace PetitParis
     /// 쥐 이동의 유일한 "실제 이동" 담당 (XRI LocomotionProvider).
     ///
     /// 중복 방지 설계
-    /// - 걷기 + 질주 + 점프 + 중력을 여기서 한 번에 합산해, 프레임마다 XRBodyTranslation 하나만 큐에 넣는다.
+    /// - 걷기 + 질주 + 점프 + 중력을 여기서 한 번에 합산해, 프레임마다 XROriginMovement 하나만 큐에 넣는다.
     /// - RatDashController / RatJumpController / RatCrouchController는 상태와 속도만 계산하고 스스로 움직이지 않는다.
     /// - 실제 적용은 XRI의 LocomotionMediator → XRBodyTransformer → CharacterController.Move가 한다.
     ///   (벽 충돌·계단은 CharacterController가 처리 → 충돌체를 뚫지 않는다)
@@ -67,7 +67,8 @@ namespace PetitParis
 
         [SerializeField, Range(0f, 0.05f)] float dashProbeMargin = 0.01f;
 
-        readonly XRBodyTranslation translation = new XRBodyTranslation();
+        // XRI 3.3.2의 이동 변환 클래스 (XRI ContinuousMoveProvider와 같은 방식)
+        readonly XROriginMovement translation = new XROriginMovement();
 
         Vector3 planarVelocity;
         float verticalVelocity;
@@ -221,7 +222,7 @@ namespace PetitParis
                 TryStartLocomotionImmediately();
             if (locomotionState == LocomotionState.Moving)
             {
-                translation.displacementVector = displacement;
+                translation.motion = displacement;
                 TryQueueTransformation(translation);
             }
         }

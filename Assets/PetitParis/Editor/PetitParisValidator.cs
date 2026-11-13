@@ -121,7 +121,7 @@ namespace PetitParis.EditorTools
                 var list = new SerializedObject(mb).FindProperty("m_LocomotionVignetteProviders");
                 if (list == null) continue;
                 for (int i = 0; i < list.arraySize; i++)
-                    if (list.GetArrayElementAtIndex(i).FindPropertyRelative("m_Locomotion")?.objectReferenceValue is RatComfortApplier) vignetteLinked = true;
+                    if (list.GetArrayElementAtIndex(i).FindPropertyRelative("m_LocomotionProvider")?.objectReferenceValue is RatComfortApplier) vignetteLinked = true;
             }
             report.Check(vignetteLinked, "Comfort Vignette ← RatComfortApplier 연결", "TunnelingVignetteController에 RatComfortApplier가 연결되지 않았습니다 (비네트 미동작).", warnOnly: true);
 

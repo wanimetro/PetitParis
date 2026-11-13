@@ -370,7 +370,7 @@ namespace PetitParis.EditorTools
             }
             list.arraySize = 1;
             var element = list.GetArrayElementAtIndex(0);
-            var loco = element.FindPropertyRelative("m_Locomotion");
+            var loco = element.FindPropertyRelative("m_LocomotionProvider");
             var enabled = element.FindPropertyRelative("m_Enabled");
             if (loco == null)
             {

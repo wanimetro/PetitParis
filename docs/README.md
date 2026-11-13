@@ -11,7 +11,7 @@
 ## 1. 무엇이 만들어졌나
 
 ### 1-1. 쥐 이동 시스템
-- **실제 이동은 `RatLocomotionController`(XRI `LocomotionProvider`) 하나뿐이다.** 걷기, 질주, 점프, 중력을 합산해 프레임마다 `XRBodyTranslation` 1개를 큐에 넣는다.
+- **실제 이동은 `RatLocomotionController`(XRI `LocomotionProvider`) 하나뿐이다.** 걷기, 질주, 점프, 중력을 합산해 프레임마다 `XROriginMovement` 1개를 큐에 넣는다.
   - 적용은 XRI가 맡는다: `LocomotionMediator` → `XRBodyTransformer` → `CharacterController.Move`. 그래서 벽과 물체를 뚫지 않는다.
 - **역할 분담**
   - `RatDashController`, `RatJumpController`, `RatCrouchController`는 상태와 속도만 계산한다. 스스로 움직이지 않는다.
@@ -146,7 +146,8 @@ z 23.8   목적지: 골목 출구, 난간 틈으로 센강 → 완료 화면 →
 ## 4. 점검 결과 (요청 7개 항목)
 
 ### ① Console 오류
-- **확인 불가**: Unity 에디터를 실행할 수 없는 환경이다. Console 로그도 레포에 없다.
+- **첫 실제 Unity 컴파일 결과 (6000.3.9f1)**: `RatLocomotionController.cs(70,18): error CS0246` 1건 → XRI 3.3.2에 없는 `XRBodyTranslation`을 써서 생긴 에러였다. `XROriginMovement`로 고쳤다 (수정 후 재컴파일은 **미검증**).
+- 같은 Console의 `Android SDK Build-tools component is not found`는 코드 문제가 아니다. 해당 에디터에 Android SDK 모듈이 설치되지 않았다는 뜻이다.
 - **대신 한 것**: Roslyn 컴파일러로 PetitParis 스크립트 34개를 컴파일해 에러 0을 확인했다.
   - 문법 확인
   - Unity·XRI API 스텁 기준 확인: 타입, 메서드, 스크립트 간 참조
@@ -162,12 +163,12 @@ OpenXR과 XR Management는 아직 설치되지 않았고, 코드는 이 둘에 �
 | `TrackedPoseDriver` 필드 (m_PositionInput 등, m_UseReference, m_Reference) | 샘플 프리팹 YAML | 확인 |
 | `SnapTurnProvider` 필드 (m_TurnAmount, m_DebounceTime, m_EnableTurnAround, m_LeftHandTurnInput.m_InputSourceMode, m_InputActionReference) | 샘플 프리팹 YAML | 확인 |
 | `XRBodyTransformer` 필드 (m_XROrigin, m_UseCharacterControllerIfExists), `LocomotionMediator`(직렬화 필드 없음), `LocomotionProvider.m_Mediator` | 샘플 프리팹 YAML | 확인 |
-| `TunnelingVignetteController.m_LocomotionVignetteProviders` | 샘플 TunnelingVignette.prefab | 목록 이름은 확인. 항목 내부 필드(m_Locomotion, m_Enabled)는 **미확인** (실패하면 경고만 내고, Inspector에서 수동 연결) |
+| `TunnelingVignetteController.m_LocomotionVignetteProviders[].m_LocomotionProvider / m_Enabled` | XRI 3.3.2 소스 (needle-mirror) | 확인 (처음엔 `m_Locomotion`으로 잘못 써서 수정함) |
 | `mediator.xrOrigin`, 네임스페이스 `Locomotion.Movement` | 샘플 스크립트 DynamicMoveProvider | 확인 |
-| `LocomotionProvider.TryStartLocomotionImmediately / TryEndLocomotion / TryQueueTransformation / locomotionState`, `LocomotionState`, `XRBodyTranslation.displacementVector`, `SnapTurnProvider.turnAmount / debounceTime`, 네임스페이스 `Locomotion.Turning` | XRI 3.x 공개 API 지식 기준 (샘플에 사용 예 없음) | **미확인** — 컴파일 에러가 나면 이 부분 |
-| `TMP_FontAsset.CreateFontAsset(Font, int, int, GlyphRenderMode, int, int, AtlasPopulationMode, bool)`, `TryAddCharacters` | TMP 공개 API 지식 기준 | **미확인** |
+| `LocomotionProvider.TryStartLocomotionImmediately / TryEndLocomotion / TryQueueTransformation / locomotionState`, `LocomotionState`, `XROriginMovement.motion`, `SnapTurnProvider.turnAmount / debounceTime`, 네임스페이스 `Locomotion.Turning` | XRI 3.3.2 소스 (needle-mirror) | 확인 (처음엔 존재하지 않는 `XRBodyTranslation`을 써서 컴파일 에러 → 수정함) |
+| `TMP_FontAsset.CreateFontAsset(Font, int, int, GlyphRenderMode, int, int, AtlasPopulationMode, bool)`, `TryAddCharacters` | TMP 3.2.0-pre.15 소스 (ugui 2.0에 포함된 TMP와 같은 계열) | 확인 |
 | 어셈블리 이름 (Unity.InputSystem, Unity.XR.CoreUtils, Unity.XR.Interaction.Toolkit) | 샘플 asmdef와 대조 | 확인 |
-| Unity.TextMeshPro 어셈블리 이름 | 지식 기준 (Unity 6에서 ugui 2.0에 포함) | **미확인** |
+| Unity.TextMeshPro 어셈블리 이름 | TMP 소스 asmdef + Unity 실제 컴파일(런타임 어셈블리 통과) | 확인 |
 
 ### ③ Input Action 연결
 - **에셋**: 액션 16개. 코드에서 참조하는 이름과 정확히 일치하고, 누락이나 미사용 액션이 없다 (스크립트로 대조).
@@ -231,7 +232,7 @@ OpenXR과 XR Management는 아직 설치되지 않았고, 코드는 이 둘에 �
 | 증상 | 해결 |
 |---|---|
 | `TryQueueTransformation`, `locomotionState`, `turnAmount` 관련 컴파일 에러 | XRI API 차이. 에러 전문을 보내 주면 수정한다 |
-| 검증에서 "비네트 Provider 목록 구조가 예상과 다름" | Main Camera/TunnelingVignette의 Locomotion Vignette Providers에 `+` → Locomotion Provider 칸에 `XR Origin (Rat)/Locomotion/Comfort` 드래그 |
+| 검증에서 "비네트 Provider 항목 구조가 예상과 다름" | Main Camera/TunnelingVignette의 Locomotion Vignette Providers에 `+` → Locomotion Provider 칸에 `XR Origin (Rat)/Locomotion/Comfort` 드래그 |
 | 이동이 전혀 안 됨 | Console에 RatLocomotionController 참조 에러가 있는지 확인. 검증 메뉴의 Mediator 항목 확인 |
 | 이동이 두 배 빠름 | 다른 Move Provider가 씬에 있음 (검증 메뉴가 FAIL로 표시) → 삭제 |
 | 한글이 □로 나옴 | `UI/Fonts/NanumGothicBold SDF` 에셋을 선택 → Inspector에서 Atlas Population Mode가 Dynamic인지 확인 → 메뉴 3번 다시 실행 |

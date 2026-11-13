@@ -15,6 +15,7 @@ Unity 6000.3.9f1, URP 17.3, XR Interaction Toolkit 3.3.2, Input System 1.18, Ope
 
 ## 작업 규칙
 - Quest 3에 필요 없는 패키지는 추가하지 않는다 (Meta XR SDK 전체, XR Hands 등). 패키지 클래스는 설치된 버전의 API를 확인한 뒤 사용한다.
+  - 클라우드 세션에서는 Unity 패키지 서버가 막혀 있다. 대신 `https://github.com/needle-mirror/<패키지명>` 미러의 해당 버전 태그(예: `com.unity.xr.interaction.toolkit` 3.3.2)를 shallow clone해서 소스로 확인한다. 기억에 의존해 API 이름을 쓰지 않는다.
 - 화면 텍스트는 한국어. 문장은 `PetitParisText`에 const로 추가한다 (한글 폰트 글자 사전 채우기에 쓰임). 폰트는 나눔고딕(OFL).
 - 에셋·음원·이미지는 무료이면서 라이선스가 확인된 것만 쓰고 `docs/CREDITS.md`에 기록한다. 후보는 먼저 사용자에게 알린다.
 - 사용자 PC에서 Quest Link가 안 될 수 있다. 에디터 테스트는 XR Device Simulator, 실기 테스트는 Android 빌드로 한다.

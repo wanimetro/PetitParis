@@ -126,6 +126,7 @@ namespace PetitParis.EditorTools
             var guideGO = new GameObject("GuideArrow");
             guideGO.transform.SetParent(gameplay, false);
             var arrowVisual = GuideArrowVisual(guideGO.transform, m.Unlit("PP_GuideArrow", new Color(1f, 0.84f, 0.32f)));
+            arrowVisual.transform.localScale = Vector3.one * 1.4f; // 체감 약 1.1m 길이
             var guide = guideGO.AddComponent<RatGuideArrow>();
 
             // ── 리그 ──

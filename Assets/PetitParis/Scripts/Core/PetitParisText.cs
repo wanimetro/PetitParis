@@ -17,7 +17,8 @@ namespace PetitParis
             "오른쪽 스틱  30도 회전\n" +
             "오른쪽 트리거  순간 질주\n" +
             "A  점프     B  웅크리기\n" +
-            "왼쪽 메뉴 길게  시점 다시 맞추기";
+            "왼쪽 메뉴 길게  시점 다시 맞추기\n" +
+            "(PC: WASD 이동, 마우스 오른쪽 드래그로 둘러보기)";
 
         public const string HintFootsteps = "발소리가 커지면\n의자 아래로 숨어요";
         public const string HintHide = "의자 아래는 안전해요";

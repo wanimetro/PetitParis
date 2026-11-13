@@ -88,7 +88,7 @@ namespace PetitParis.EditorTools
             var light = lightGO.AddComponent<Light>();
             light.type = LightType.Directional;
             light.color = new Color(1f, 0.66f, 0.5f);
-            light.intensity = 0.95f;
+            light.intensity = 1.1f;
             light.shadows = LightShadows.Hard;
             lightGO.transform.rotation = Quaternion.Euler(11f, 62f, 0f); // 서남서 낮은 해 → 동쪽 건물 윗부분만 노을빛
 
@@ -106,9 +106,9 @@ namespace PetitParis.EditorTools
             }
             RenderSettings.sun = light;
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.5f, 0.5f, 0.72f);
-            RenderSettings.ambientEquatorColor = new Color(0.66f, 0.52f, 0.52f);
-            RenderSettings.ambientGroundColor = new Color(0.3f, 0.25f, 0.25f);
+            RenderSettings.ambientSkyColor = new Color(0.64f, 0.64f, 0.86f);
+            RenderSettings.ambientEquatorColor = new Color(0.8f, 0.64f, 0.6f);
+            RenderSettings.ambientGroundColor = new Color(0.42f, 0.34f, 0.32f);
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = new Color(0.74f, 0.62f, 0.7f);

@@ -27,13 +27,17 @@ namespace PetitParis
 
         [SerializeField] bool showArrow = true;
 
-        [Tooltip("쥐 앞 몇 m 지점에 화살표를 둘지 (0.17 = 체감 1.7m).")]
-        [SerializeField, Range(0.05f, 0.5f)] float distanceAhead = 0.17f;
+        [Tooltip("쥐 앞 몇 m 지점에 화살표를 둘지 (0.26 = 체감 2.6m).")]
+        [SerializeField, Range(0.05f, 0.5f)] float distanceAhead = 0.26f;
 
         [Tooltip("경로를 얼마나 앞서 가리킬지 (월드 m). 길수록 모퉁이를 미리 꺾는다.")]
         [SerializeField, Range(0.1f, 2f)] float lookAhead = 0.6f;
 
-        [SerializeField, Range(0f, 0.1f)] float hoverHeight = 0.015f;
+        [Tooltip("바닥에서 떠 있는 높이 (월드 m). 눈높이 12cm보다 조금 낮게 → PC 화면과 VR 모두 시야 안에 들어온다.")]
+        [SerializeField, Range(0f, 0.1f)] float hoverHeight = 0.065f;
+
+        [Tooltip("화살표 앞쪽을 들어 올리는 각도. 0이면 바닥에 납작, 클수록 표지판처럼 서서 잘 보인다.")]
+        [SerializeField, Range(0f, 80f)] float tiltDegrees = 50f;
         [SerializeField, Range(0f, 0.02f)] float bobAmplitude = 0.004f;
         [SerializeField, Range(30f, 720f)] float turnSpeed = 240f;
 
@@ -115,7 +119,8 @@ namespace PetitParis
 
             float bob = Mathf.Sin(Time.time * 3f) * bobAmplitude;
             Vector3 forward = currentYaw * Vector3.forward;
-            arrow.SetPositionAndRotation(p + forward * distanceAhead + Vector3.up * (hoverHeight + bob), currentYaw);
+            arrow.SetPositionAndRotation(p + forward * distanceAhead + Vector3.up * (hoverHeight + bob),
+                currentYaw * Quaternion.Euler(-tiltDegrees, 0f, 0f));
             SetVisible(true);
         }
 

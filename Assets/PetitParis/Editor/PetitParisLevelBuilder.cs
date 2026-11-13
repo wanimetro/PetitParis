@@ -2,11 +2,12 @@ using TMPro;
 using UnityEditor;
 using UnityEngine;
 using static PetitParis.EditorTools.PetitParisBuildKit;
+using static PetitParis.EditorTools.PetitParisParisKit;
 
 namespace PetitParis.EditorTools
 {
     /// <summary>
-    /// 실제 플레이용 게임 씬 PetitParisVR.unity (블록아웃, 기본 도형 + 단색 머티리얼).
+    /// 실제 플레이용 게임 씬 PetitParisVR.unity (해 질 녘 파리 거리. 외부 모델 없이 코드 + 자체 생성 질감).
     ///
     /// 동선 (월드 미터, +Z가 북쪽, 경로 길이 약 25m ≈ 걷기 3~4분)
     ///   시작   카페 벽 틈 (-3.25, 0, -0.4) → 동쪽을 보고 시작, 틈 안은 안전 구역
@@ -27,28 +28,31 @@ namespace PetitParis.EditorTools
             if (!PrepareNewScene(PetitParisPaths.Scene, out var scene)) return;
             var m = new MaterialLibrary();
             var font = KoreanFont();
+            PetitParisTextures.ClearCache();
+            var p = Palette.Create(m);
 
-            SetupLighting(true);
+            SetupDusk(m);
 
-            var env = new GameObject("Environment_Blockout").transform;
-            BuildGround(env, m);
-            BuildCafe(env, m, font);
-            BuildBakery(env, m, font);
-            BuildAlleyAndCrossStreet(env, m);
-            BuildEastFacade(env, m);
-            BuildQuaiAndSeine(env, m);
+            var env = new GameObject("Environment_Paris").transform;
+            BuildGround(env, p);
+            BuildCafe(env, p, m, font);
+            BuildBakery(env, p, font);
+            BuildEastBuildings(env, p, font);
+            BuildAlleyAndCrossStreet(env, p);
+            BuildQuaiAndSeine(env, p);
             BuildProps(env, m);
+            BuildParisProps(env, p);
             MarkStatic(env);
 
             // ── 움직이는 위험 ──
             var npcs = Group("Pedestrians", null);
-            Pedestrian("Pedestrian_A_Terrace", npcs,
+            Pedestrian("Pedestrian_A_Waiter", npcs,
                 new[] { new Vector3(-2.5f, 0f, 0.2f), new Vector3(-2.5f, 0f, 6.9f), new Vector3(0.25f, 0f, 6.9f), new Vector3(0.25f, 0f, 0.2f) },
-                PedestrianPath.LoopMode.Loop, 0.9f, 3f, new Color(0.25f, 0.3f, 0.45f), m);
-            Pedestrian("Pedestrian_B_Bakery", npcs,
+                PedestrianPath.LoopMode.Loop, 0.9f, 3f, new Color(0.25f, 0.3f, 0.45f), m, PedestrianStyle.Waiter);
+            Pedestrian("Pedestrian_B_Chef", npcs,
                 new[] { new Vector3(-2.2f, 0f, 7.6f), new Vector3(0.3f, 0f, 8.7f), new Vector3(-2.2f, 0f, 9.8f),
                         new Vector3(0.3f, 0f, 10.9f), new Vector3(-2.2f, 0f, 12.0f), new Vector3(0.2f, 0f, 12.9f) },
-                PedestrianPath.LoopMode.PingPong, 0.8f, 0f, new Color(0.55f, 0.32f, 0.25f), m);
+                PedestrianPath.LoopMode.PingPong, 0.8f, 0f, new Color(0.55f, 0.32f, 0.25f), m, PedestrianStyle.Chef);
             Bicycle("Bicycle_CrossStreet", Group("Vehicles", null), new Vector3(-7.0f, 0f, 17.0f), new Vector3(7.0f, 0f, 17.0f), m);
 
             // ── 게임 진행 ──
@@ -103,9 +107,32 @@ namespace PetitParis.EditorTools
                 new Vector2(0.34f, 0.24f), PetitParisText.CompleteTitle, 0.12f, font, m);
             complete.SetActive(false);
 
+            // 내비게이션 화살표 경로 (시작 → 의자 옆 안전한 길 → 체크포인트들 → 출구)
+            var route = Group("GuideRoute", gameplay);
+            Vector3[] routePoints =
+            {
+                new Vector3(-2.75f, 0f, -0.4f), new Vector3(-2.2f, 0f, 0.55f), new Vector3(-1.15f, 0f, 1.0f), new Vector3(-1.15f, 0f, 5.9f),
+                new Vector3(-1.5f, 0f, 6.08f), new Vector3(-1.15f, 0f, 6.6f), new Vector3(-1.3f, 0f, 7.6f), new Vector3(-2.45f, 0f, 9.4f),
+                new Vector3(-2.7f, 0f, 10.0f), new Vector3(-2.4f, 0f, 11.0f), new Vector3(-1.2f, 0f, 12.6f), new Vector3(-0.5f, 0f, 13.8f),
+                new Vector3(-1.1f, 0f, 14.6f), new Vector3(-1.35f, 0f, 15.0f), new Vector3(-0.5f, 0f, 15.8f), new Vector3(-0.5f, 0f, 18.2f),
+                new Vector3(-0.5f, 0f, 21.0f), new Vector3(-0.5f, 0f, 23.8f),
+            };
+            var routeNodes = new Transform[routePoints.Length];
+            for (int i = 0; i < routePoints.Length; i++)
+            {
+                routeNodes[i] = Group($"R{i:00}", route);
+                routeNodes[i].position = routePoints[i];
+            }
+            var guideGO = new GameObject("GuideArrow");
+            guideGO.transform.SetParent(gameplay, false);
+            var arrowVisual = GuideArrowVisual(guideGO.transform, m.Unlit("PP_GuideArrow", new Color(1f, 0.84f, 0.32f)));
+            var guide = guideGO.AddComponent<RatGuideArrow>();
+
             // ── 리그 ──
             var rig = BuildRig(Spawn, Quaternion.Euler(0f, SpawnYaw, 0f), false, m);
             if (rig == null) return;
+            rig.camera.clearFlags = CameraClearFlags.Skybox; // 해 질 녘 하늘
+            PrefabUtility.RecordPrefabInstancePropertyModifications(rig.camera);
 
             var flowGO = new GameObject("GameFlow");
             flowGO.transform.SetParent(gameplay, false);
@@ -119,129 +146,176 @@ namespace PetitParis.EditorTools
             Wire(objective, ("visual", diamond.transform), ("rig", rig.scaleRig));
             Wire(rig.respawn, ("checkpoints", manager));
             Wire(rig.statusPanel, ("gameFlow", flow), ("checkpoints", manager));
+            Wire(guide, ("rig", rig.scaleRig), ("respawn", rig.respawn), ("gameFlow", flow), ("arrow", arrowVisual.transform));
+            var gsoArrow = new SerializedObject(guide);
+            SetObjectArray(gsoArrow, "route", routeNodes);
+            gsoArrow.ApplyModifiedPropertiesWithoutUndo();
 
             if (!SaveScene(scene, PetitParisPaths.Scene, true)) return;
             Selection.activeGameObject = rig.root;
             Debug.Log($"[PetitParis] 게임 씬을 만들었습니다: {PetitParisPaths.Scene} (빌드 목록 맨 앞). 다음: PetitParis > 4. Validate Scene");
         }
 
-        // ───────────────────────── 구역별 블록아웃 ─────────────────────────
+        // ───────────────────────── 구역별 파리 거리 (게임 동선은 그대로, 외형만 파리풍) ─────────────────────────
 
-        static void BuildGround(Transform env, MaterialLibrary m)
+        static void BuildGround(Transform env, Palette p)
         {
             var g = Group("Ground", env);
-            BoxXZ("Ground_Cobblestone", g, -8f, 8f, -2f, 25.9f, -0.1f, 0f, m.Lit("PP_Ground", new Color(0.42f, 0.4f, 0.38f)));
-            // 구역별 바닥 색 (얇은 판, 충돌체 없음)
-            Paving("Paving_Terrace", g, -3f, 0.8f, -1f, 7f, m.Lit("PP_PavingTerrace", new Color(0.62f, 0.56f, 0.48f)));
-            Paving("Paving_Bakery", g, -3f, 0.8f, 7f, 13.3f, m.Lit("PP_PavingSidewalk", new Color(0.66f, 0.64f, 0.6f)));
-            Paving("Paving_Road", g, 0.8f, 4f, -1f, 13.3f, m.Lit("PP_PavingRoad", new Color(0.34f, 0.33f, 0.33f)));
-            Paving("Paving_Alley", g, -1.7f, 0.7f, 13.3f, 23f, m.Lit("PP_PavingAlley", new Color(0.5f, 0.48f, 0.46f)));
-            Paving("Paving_BikeLane", g, -7.6f, 7.6f, 16.4f, 17.6f, m.Lit("PP_Asphalt", new Color(0.24f, 0.24f, 0.26f)));
-            Paving("Paving_Quai", g, -4f, 4.4f, 23f, 25.9f, m.Lit("PP_PavingQuai", new Color(0.7f, 0.66f, 0.58f)));
+            TexBoxXZ("Ground_Cobblestone", g, -8f, 8f, -2f, 25.9f, -0.1f, 0f, p.cobble, 0.9f);
+            Paving("Paving_Terrace", g, -3f, 0.8f, -1f, 7f, p.slabsWarm, 1.2f);
+            Paving("Paving_Bakery", g, -3f, 0.8f, 7f, 13.3f, p.slabs, 1.2f);
+            Paving("Paving_Road", g, 0.8f, 4f, -1f, 13.3f, p.cobbleDark, 0.9f);
+            Paving("Paving_Alley", g, -1.7f, 0.7f, 13.3f, 23f, p.cobble, 0.8f);
+            Paving("Paving_BikeLane", g, -7.6f, 7.6f, 16.4f, 17.6f, p.asphalt, 2f);
+            Paving("Paving_Quai", g, -4f, 4.4f, 23f, 25.9f, p.slabsWarm, 1.5f);
             // 보도 경계석 (높이 1.5cm, 걸어서 넘을 수 있음)
-            Paving("Curb_Terrace", g, 0.78f, 0.86f, -1f, 13.3f, m.Lit("PP_Curb", new Color(0.75f, 0.74f, 0.7f)), 0.015f);
+            Paving("Curb_Terrace", g, 0.78f, 0.9f, -1f, 13.3f, p.trim, 0.6f, 0.015f);
         }
 
-        static void Paving(string name, Transform parent, float x0, float x1, float z0, float z1, Material mat, float height = 0.003f)
+        static void Paving(string name, Transform parent, float x0, float x1, float z0, float z1, Material mat, float tile, float height = 0.003f)
         {
-            var go = BoxXZ(name, parent, x0, x1, z0, z1, 0f, height, mat);
-            if (height < 0.01f) RemoveCollider(go);
+            TexBoxXZ(name, parent, x0, x1, z0, z1, 0f, height, mat, tile, height >= 0.01f);
         }
 
-        static void BuildCafe(Transform env, MaterialLibrary m, TMP_FontAsset font)
+        static void BuildCafe(Transform env, Palette p, MaterialLibrary m, TMP_FontAsset font)
         {
             var cafe = Group("Cafe", env);
-            var wall = m.Lit("PP_WallCafe", new Color(0.86f, 0.8f, 0.68f));
-            // 벽 틈: 너비 30cm, 높이 25cm, 깊이 40cm (쥐 지름 약 8cm, 눈높이 12cm)
-            BoxXZ("Facade_South", cafe, -3.4f, -3.0f, -1.0f, -0.55f, 0f, 7f, wall);
-            BoxXZ("Facade_CrackLintel", cafe, -3.4f, -3.0f, -0.55f, -0.25f, 0.25f, 7f, wall);
-            BoxXZ("Facade_Main", cafe, -3.4f, -3.0f, -0.25f, 7.0f, 0f, 7f, wall);
-            BoxXZ("Crack_Back", cafe, -3.7f, -3.4f, -0.6f, -0.2f, 0f, 0.3f, m.Lit("PP_WallDark", new Color(0.35f, 0.3f, 0.27f)));
+            // 1층 + 벽 틈 (너비 30cm, 높이 25cm, 깊이 40cm — 쥐 지름 약 8cm, 눈높이 12cm)
+            TexBoxXZ("Ground_South", cafe, -3.4f, -3.0f, -1.0f, -0.55f, 0f, 4f, p.rustic, 1.2f);
+            TexBoxXZ("Ground_CrackLintel", cafe, -3.4f, -3.0f, -0.55f, -0.25f, 0.25f, 4f, p.rustic, 1.2f);
+            TexBoxXZ("Ground_Main", cafe, -3.4f, -3.0f, -0.25f, 7.0f, 0f, 4f, p.rustic, 1.2f);
+            TexBoxXZ("Ground_Mass", cafe, -9f, -3.4f, -1.0f, 7.0f, 0f, 4f, p.rustic, 1.2f);
+            TexBoxXZ("Crack_Back", cafe, -3.42f, -3.4f, -0.6f, -0.2f, 0f, 0.3f, p.darkBack, 1f, false);
             SafeZone("SafeZone_WallCrack", cafe, new Vector3(-3.2f, 0.12f, -0.4f), new Vector3(0.4f, 0.24f, 0.3f), "벽 틈", false, m);
-            BoxXZ("SouthEndWall", cafe, -3.7f, 4.4f, -1.4f, -1.0f, 0f, 4f, wall);
 
-            // 가게 전면, 차양, 간판
-            BoxXZ("Shopfront", cafe, -3.03f, -2.99f, 0.1f, 6.6f, 0.35f, 2.45f, m.Lit("PP_ShopRed", new Color(0.45f, 0.12f, 0.1f)));
-            BoxXZ("Shopfront_Glass", cafe, -3.04f, -3.02f, 0.4f, 6.3f, 0.6f, 2.25f, m.Lit("PP_Glass", new Color(0.55f, 0.68f, 0.74f)));
-            BoxXZ("Awning", cafe, -3.0f, -1.75f, 0.1f, 6.6f, 2.55f, 2.6f, m.Lit("PP_AwningRed", new Color(0.7f, 0.15f, 0.14f)));
-            BoxXZ("SignBoard", cafe, -2.99f, -2.96f, 2.4f, 4.4f, 2.7f, 3.1f, m.Lit("PP_SignDark", new Color(0.12f, 0.12f, 0.12f)));
-            var face = new Vector3(10f, 0f, 3.4f);
-            Label("Sign_Cafe", cafe, new Vector3(-2.94f, 2.9f, 3.4f), PetitParisText.SignCafeLatin + "  " + PetitParisText.SignCafe, 2.2f, 2f, new Color(1f, 0.9f, 0.6f), font, face);
-            Windows(cafe, -3.0f, 1f, 0.2f, 7.0f, new[] { 3.5f, 5.3f }, m);
-            BoxXZ("Roof_Mansard", cafe, -3.6f, -3.2f, -1.0f, 7.0f, 7f, 8.2f, m.Lit("PP_RoofSlate", new Color(0.32f, 0.35f, 0.4f)));
+            var spec = new FacadeSpec { floors = 4, seed = 11, litChance = 0.5f };
+            TexBoxXZ("Upper_Mass", cafe, -9f, -3.0f, -1.0f, 7.0f, 4f, spec.TopY, p.limestone, 1.2f);
+            var frame = FacadeFrame("Facade_Cafe", cafe, new Vector3(-3.0f, 0f, 3.0f), Vector3.right);
+            FacadeDetails(frame, 8f, spec, p);
+            ShopFront(frame, 0.1f - 3.0f, 6.6f - 3.0f, 4f, p.shopRed, p.awningRed, p.awningRedTop, PetitParisText.SignCafeName, font, p);
+            StreetSign("StreetSign_Rue", frame, new Vector3(0f, 2.9f, -3.55f), PetitParisText.StreetName, font, p);
+
+            // 시작 지점 뒤(남쪽)를 막는 건물
+            var southSpec = new FacadeSpec { floors = 3, seed = 13, shutters = true, shutterMaterial = p.shutterBlue, litChance = 0.45f };
+            TexBoxXZ("SouthBuilding", cafe, -9f, 10f, -7f, -1.0f, 0f, southSpec.TopY, p.plasterPink, 2f);
+            FacadeDetails(FacadeFrame("Facade_South", cafe, new Vector3(0.5f, 0f, -1.0f), Vector3.forward), 7f, southSpec, p);
         }
 
-        static void BuildBakery(Transform env, MaterialLibrary m, TMP_FontAsset font)
+        static void BuildBakery(Transform env, Palette p, TMP_FontAsset font)
         {
             var bakery = Group("Bakery", env);
-            var wall = m.Lit("PP_WallBakery", new Color(0.9f, 0.82f, 0.6f));
-            BoxXZ("Facade", bakery, -3.4f, -3.0f, 7.0f, 13.0f, 0f, 7.5f, wall);
-            BoxXZ("Shopfront", bakery, -3.03f, -2.99f, 7.4f, 12.6f, 0.35f, 2.4f, m.Lit("PP_ShopBlue", new Color(0.15f, 0.25f, 0.45f)));
-            BoxXZ("Shopfront_Glass", bakery, -3.04f, -3.02f, 7.7f, 12.3f, 0.6f, 2.2f, m.Lit("PP_GlassWarm", new Color(0.85f, 0.75f, 0.55f)));
-            BoxXZ("Awning", bakery, -3.0f, -1.9f, 7.4f, 12.6f, 2.5f, 2.55f, m.Lit("PP_AwningBlue", new Color(0.2f, 0.32f, 0.6f)));
-            BoxXZ("SignBoard", bakery, -2.99f, -2.96f, 8.6f, 11.4f, 2.65f, 3.15f, m.Lit("PP_SignCream", new Color(0.95f, 0.9f, 0.78f)));
-            Label("Sign_Bakery", bakery, new Vector3(-2.94f, 2.9f, 10.0f), PetitParisText.SignBakeryLatin + "  " + PetitParisText.SignBakery, 2.0f, 2.8f,
-                new Color(0.2f, 0.25f, 0.5f), font, new Vector3(10f, 0f, 10.0f));
-            Windows(bakery, -3.0f, 1f, 7.2f, 13.0f, new[] { 3.6f, 5.4f }, m);
-            BoxXZ("Roof_Mansard", bakery, -3.6f, -3.2f, 7.0f, 13.0f, 7.5f, 8.6f, m.Lit("PP_RoofSlate", new Color(0.32f, 0.35f, 0.4f)));
+            var spec = new FacadeSpec { floors = 5, seed = 23, shutters = true, shutterMaterial = p.shutterBlue, litChance = 0.45f };
+            TexBoxXZ("Ground_Mass", bakery, -9f, -3.0f, 7.0f, 13.0f, 0f, 4f, p.rustic, 1.2f);
+            TexBoxXZ("Upper_Mass", bakery, -9f, -3.0f, 7.0f, 13.0f, 4f, spec.TopY, p.plasterOchre, 2f);
+            var frame = FacadeFrame("Facade_Bakery", bakery, new Vector3(-3.0f, 0f, 10f), Vector3.right);
+            FacadeDetails(frame, 6f, spec, p);
+            ShopFront(frame, 7.4f - 10f, 12.6f - 10f, 4f, p.shopBlue, p.awningBlue, p.awningBlueTop, PetitParisText.SignBakeryLatin, font, p);
         }
 
-        static void BuildAlleyAndCrossStreet(Transform env, MaterialLibrary m)
-        {
-            var alley = Group("Alley", env);
-            var stoneA = m.Lit("PP_WallAlleyA", new Color(0.78f, 0.74f, 0.66f));
-            var stoneB = m.Lit("PP_WallAlleyB", new Color(0.7f, 0.66f, 0.6f));
-            // 빵집과 골목 사이 블록
-            BoxXZ("Block_West_South", alley, -7.6f, -1.7f, 13.0f, 15.6f, 0f, 6f, stoneA);
-            BoxXZ("Block_East_South", alley, 0.7f, 7.6f, 13.3f, 15.6f, 0f, 6f, stoneB);
-            // 자전거 길 (가로 골목) 양쪽 건물
-            BoxXZ("CrossStreet_SouthWest", alley, -7.6f, -1.7f, 15.6f, 16.4f, 0f, 5f, stoneB);
-            BoxXZ("CrossStreet_SouthEast", alley, 0.7f, 7.6f, 15.6f, 16.4f, 0f, 5f, stoneA);
-            BoxXZ("CrossStreet_NorthWest", alley, -7.6f, -1.7f, 17.6f, 18.4f, 0f, 5f, stoneA);
-            BoxXZ("CrossStreet_NorthEast", alley, 0.7f, 7.6f, 17.6f, 18.4f, 0f, 5f, stoneB);
-            BoxXZ("CrossStreet_EndWest", alley, -8f, -7.6f, 15.6f, 18.4f, 0f, 5f, stoneB);
-            BoxXZ("CrossStreet_EndEast", alley, 7.6f, 8f, 15.6f, 18.4f, 0f, 5f, stoneB);
-            // 북쪽 골목 벽
-            BoxXZ("Alley_West_North", alley, -4.4f, -1.7f, 18.4f, 23.0f, 0f, 6f, stoneB);
-            BoxXZ("Alley_East_North", alley, 0.7f, 4.8f, 18.4f, 23.0f, 0f, 6f, stoneA);
-            Windows(alley, -1.7f, 1f, 18.6f, 23.0f, new[] { 3.0f, 4.8f }, m);
-            Windows(alley, 0.7f, -1f, 18.6f, 23.0f, new[] { 3.0f, 4.8f }, m);
-            Windows(alley, -1.7f, 1f, 13.2f, 15.6f, new[] { 3.0f, 4.8f }, m);
-            Windows(alley, 0.7f, -1f, 13.4f, 15.6f, new[] { 3.0f, 4.8f }, m);
-        }
-
-        static void BuildEastFacade(Transform env, MaterialLibrary m)
+        static void BuildEastBuildings(Transform env, Palette p, TMP_FontAsset font)
         {
             var east = Group("EastBuildings", env);
-            BoxXZ("Facade_East", east, 4.0f, 4.4f, -1.0f, 13.3f, 0f, 8f, m.Lit("PP_WallEast", new Color(0.82f, 0.78f, 0.72f)));
-            BoxXZ("Shopfront_East", east, 3.98f, 4.02f, 0.5f, 12.5f, 0.3f, 2.4f, m.Lit("PP_ShopGreen", new Color(0.16f, 0.3f, 0.22f)));
-            Windows(east, 4.0f, -1f, -0.8f, 13.3f, new[] { 3.5f, 5.3f, 7.0f }, m);
-            BoxXZ("Roof_East", east, 4.2f, 4.6f, -1.0f, 13.3f, 8f, 9.2f, m.Lit("PP_RoofSlate", new Color(0.32f, 0.35f, 0.4f)));
+            var spec = new FacadeSpec { floors = 5, seed = 37, litChance = 0.4f };
+            TexBoxXZ("Ground_Mass", east, 4.0f, 10f, -1.0f, 13.3f, 0f, 4f, p.rustic, 1.2f);
+            TexBoxXZ("Upper_Mass", east, 4.0f, 10f, -1.0f, 13.3f, 4f, spec.TopY, p.limestone, 1.2f);
+            const float zc = 6.15f;
+            var frame = FacadeFrame("Facade_East", east, new Vector3(4.0f, 0f, zc), Vector3.left);
+            FacadeDetails(frame, 14.3f, spec, p);
+            // 바깥이 -X인 정면: 정면 좌표 z = -(월드 z - 중심)
+            ShopFront(frame, -(0.8f - zc), -(5.8f - zc), 4f, p.shopGreen, p.awningGreen, p.awningGreenTop, PetitParisText.SignFlowers, font, p);
+            ShopFront(frame, -(7.5f - zc), -(12.5f - zc), 4f, p.shopBrown, p.awningRed, p.awningRedTop, PetitParisText.SignBooks, font, p);
         }
 
-        static void BuildQuaiAndSeine(Transform env, MaterialLibrary m)
+        static void BuildAlleyAndCrossStreet(Transform env, Palette p)
+        {
+            var alley = Group("Alley", env);
+            var southSpec = new FacadeSpec { floors = 3, seed = 41, shutters = true, shutterMaterial = p.shutterGreen, litChance = 0.55f, windowSpacing = 1.8f };
+            var northSpec = new FacadeSpec { floors = 4, seed = 43, shutters = true, shutterMaterial = p.shutterBlue, litChance = 0.55f, windowSpacing = 1.8f };
+
+            // 덩어리 (충돌체). 좁은 골목(x -1.7~0.7)과 자전거가 지나는 가로 골목(z 16.4~17.6)은 비워 둔다
+            TexBoxXZ("Block_SouthWest", alley, -7.6f, -1.7f, 13.0f, 16.4f, 0f, southSpec.TopY, p.plasterPink, 2f);
+            TexBoxXZ("Block_SouthEast", alley, 0.7f, 7.6f, 13.3f, 16.4f, 0f, southSpec.TopY, p.plasterOchre, 2f);
+            TexBoxXZ("Block_NorthWest", alley, -7.6f, -1.7f, 17.6f, 23.0f, 0f, northSpec.TopY, p.plasterCream, 2f);
+            TexBoxXZ("Block_NorthEast", alley, 0.7f, 7.6f, 17.6f, 23.0f, 0f, northSpec.TopY, p.plasterPink, 2f);
+            TexBoxXZ("CrossStreet_EndWest", alley, -8f, -7.6f, 16.4f, 17.6f, 0f, 6f, p.plasterCream, 2f);
+            TexBoxXZ("CrossStreet_EndEast", alley, 7.6f, 8f, 16.4f, 17.6f, 0f, 6f, p.plasterCream, 2f);
+
+            FacadeDetails(FacadeFrame("Facade_AlleyWestSouth", alley, new Vector3(-1.7f, 0f, 14.7f), Vector3.right), 3.4f, southSpec, p);
+            FacadeDetails(FacadeFrame("Facade_AlleyEastSouth", alley, new Vector3(0.7f, 0f, 14.85f), Vector3.left), 3.1f, southSpec, p);
+            FacadeDetails(FacadeFrame("Facade_RoadEnd", alley, new Vector3(2.35f, 0f, 13.3f), Vector3.back), 3.3f, southSpec, p);
+            FacadeDetails(FacadeFrame("Facade_CrossSouthWest", alley, new Vector3(-4.65f, 0f, 16.4f), Vector3.forward), 5.9f, southSpec, p);
+            FacadeDetails(FacadeFrame("Facade_CrossSouthEast", alley, new Vector3(4.15f, 0f, 16.4f), Vector3.forward), 6.9f, southSpec, p);
+            FacadeDetails(FacadeFrame("Facade_CrossNorthWest", alley, new Vector3(-4.65f, 0f, 17.6f), Vector3.back), 5.9f, northSpec, p);
+            FacadeDetails(FacadeFrame("Facade_CrossNorthEast", alley, new Vector3(4.15f, 0f, 17.6f), Vector3.back), 6.9f, northSpec, p);
+            FacadeDetails(FacadeFrame("Facade_AlleyWestNorth", alley, new Vector3(-1.7f, 0f, 20.3f), Vector3.right), 5.4f, northSpec, p);
+            FacadeDetails(FacadeFrame("Facade_AlleyEastNorth", alley, new Vector3(0.7f, 0f, 20.3f), Vector3.left), 5.4f, northSpec, p);
+        }
+
+        static void BuildQuaiAndSeine(Transform env, Palette p)
         {
             var quai = Group("Quai", env);
-            var stone = m.Lit("PP_QuaiStone", new Color(0.76f, 0.72f, 0.62f));
-            BoxXZ("Quai_WestWall", quai, -4.4f, -4.0f, 23.0f, 25.9f, 0f, 1.0f, stone);
-            BoxXZ("Quai_EastWall", quai, 4.4f, 4.8f, 23.0f, 25.9f, 0f, 1.0f, stone);
-            BoxXZ("Parapet_West", quai, -4.0f, -1.0f, 25.6f, 25.9f, 0f, 0.45f, stone);
-            BoxXZ("Parapet_East", quai, 0.0f, 4.4f, 25.6f, 25.9f, 0f, 0.45f, stone);
-            // 난간 틈의 보이지 않는 벽 (떨어짐 방지)
-            var invisible = BoxXZ("Parapet_Gap_Invisible", quai, -1.0f, 0.0f, 25.85f, 25.9f, 0f, 0.4f, stone);
-            invisible.GetComponent<MeshRenderer>().enabled = false;
+            TexBoxXZ("Quai_WestWall", quai, -4.4f, -4.0f, 23.0f, 25.9f, 0f, 1.0f, p.limestone, 1.2f);
+            TexBoxXZ("Quai_EastWall", quai, 4.4f, 4.8f, 23.0f, 25.9f, 0f, 1.0f, p.limestone, 1.2f);
+            TexBoxXZ("Parapet_West", quai, -4.0f, -1.0f, 25.6f, 25.9f, 0f, 0.45f, p.limestone, 1.2f);
+            TexBoxXZ("Parapet_East", quai, 0.0f, 4.4f, 25.6f, 25.9f, 0f, 0.45f, p.limestone, 1.2f);
+            var invisible = TexBoxXZ("Parapet_Gap_Invisible", quai, -1.0f, 0.0f, 25.85f, 25.9f, 0f, 0.4f, p.limestone, 1f);
+            invisible.GetComponent<MeshRenderer>().enabled = false; // 난간 틈으로 떨어지지 않게
+            LampPost("QuaiLamp_W", quai, new Vector3(-2.8f, 0f, 25.25f), p);
+            LampPost("QuaiLamp_E", quai, new Vector3(2.6f, 0f, 25.25f), p);
 
-            var water = m.Unlit("PP_SeineWater", new Color(0.28f, 0.45f, 0.55f));
-            RemoveCollider(BoxXZ("Seine_Water", quai, -40f, 40f, 25.9f, 80f, -1.2f, -0.9f, water));
-            var far = m.Unlit("PP_FarStone", new Color(0.7f, 0.7f, 0.68f));
-            var farHouse = m.Unlit("PP_FarHouses", new Color(0.76f, 0.78f, 0.82f));
-            RemoveCollider(BoxXZ("FarBank", quai, -40f, 40f, 60f, 64f, -1f, 0.6f, far));
-            float[] heights = { 9f, 12f, 8f, 14f, 10f, 11f, 7f };
-            for (int i = 0; i < heights.Length; i++)
-                RemoveCollider(BoxXZ($"FarHouse_{i}", quai, -30f + i * 9f, -23f + i * 9f, 64f, 70f, 0.6f, heights[i], farHouse));
-            RemoveCollider(BoxXZ("Bridge_Deck", quai, -40f, 40f, 40f, 42.5f, 2.0f, 2.6f, far));
+            // 센강과 강 건너 풍경 (Unlit + 안개 → 해 질 녘 원경)
+            TexBoxXZ("Seine_Water", quai, -40f, 40f, 25.9f, 80f, -1.2f, -0.9f, p.water, 6f, false);
+            TexBoxXZ("Seine_QuaiFace", quai, -40f, 40f, 25.9f, 26.1f, -1.0f, 0f, p.limestone, 1.2f, false);
+            TexBoxXZ("FarBank", quai, -40f, 40f, 58f, 62f, -1f, 0.8f, p.farHaze, 4f, false);
+            FarSkyline("FarSkyline", quai, 63f, 70f, -38f, 38f, p, 7);
+            EiffelSilhouette("EiffelTower", quai, new Vector3(-16f, -1f, 66f), 24f, p.eiffel);
+
+            // 다리와 다리 위 가로등 불빛
+            TexBoxXZ("Bridge_Deck", quai, -40f, 40f, 40f, 42.5f, 2.0f, 2.6f, p.limestone, 2f, false);
             foreach (float x in new[] { -20f, -8f, 4f, 16f })
-                RemoveCollider(BoxXZ($"Bridge_Pier_{x}", quai, x, x + 1.5f, 40.2f, 42.3f, -1f, 2.0f, far));
+                TexBoxXZ($"Bridge_Pier_{x}", quai, x, x + 1.5f, 40.2f, 42.3f, -1f, 2.0f, p.limestone, 2f, false);
+            for (float x = -30f; x <= 30f; x += 5f)
+                RemoveCollider(Sphere("Bridge_Light", quai, new Vector3(x, 3.1f, 40.1f), 0.35f, p.bulb));
+
+            AddPhotoBackdropIfPresent(quai);
+        }
+
+        /// <summary>
+        /// 사진 배경(선택): Assets/PetitParis/ThirdParty/Backdrops/ 안에 이름이 ParisBackdrop인 이미지가 있으면
+        /// 강 건너 맨 뒤에 큰 판으로 세운다. 쥐 시점에서는 양안 시차가 아주 작아서 먼 사진도 입체처럼 자연스럽다.
+        /// 라이선스가 확인된 사진만 넣고 docs/CREDITS.md에 출처를 적는다.
+        /// </summary>
+        static void AddPhotoBackdropIfPresent(Transform parent)
+        {
+            const string folder = PetitParisPaths.Root + "/ThirdParty/Backdrops";
+            if (!AssetDatabase.IsValidFolder(folder)) return;
+            var guids = AssetDatabase.FindAssets("ParisBackdrop t:Texture2D", new[] { folder });
+            if (guids.Length == 0) return;
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(AssetDatabase.GUIDToAssetPath(guids[0]));
+            if (tex == null) return;
+            var mat = new MaterialLibrary().UnlitTex("PP_PhotoBackdrop", tex, Color.white);
+            float width = 150f, height = width * tex.height / Mathf.Max(1f, tex.width);
+            var quad = RemoveCollider(GameObject.CreatePrimitive(PrimitiveType.Quad));
+            quad.name = "PhotoBackdrop";
+            quad.transform.SetParent(parent, false);
+            quad.transform.position = new Vector3(0f, height * 0.5f - 6f, 76f);
+            quad.transform.localScale = new Vector3(width, height, 1f);
+            quad.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            Debug.Log("[PetitParis] 사진 배경을 배치했습니다: " + AssetDatabase.GetAssetPath(tex));
+        }
+
+        /// <summary>파리 소품: 가로등, 테라스 줄 전구, 모리스 기둥.</summary>
+        static void BuildParisProps(Transform env, Palette p)
+        {
+            var props = Group("ParisProps", env);
+            foreach (float z in new[] { 2.0f, 4.1f, 6.2f })
+            {
+                LampPost($"Lamp_Terrace_{z}", props, new Vector3(0.72f, 0f, z), p);
+                StringLights($"StringLights_{z}", props, new Vector3(-2.95f, 3.65f, z), new Vector3(0.72f, 3.5f, z), 0.35f, 10, p);
+            }
+            LampPost("Lamp_Bakery_1", props, new Vector3(0.72f, 0f, 8.5f), p);
+            LampPost("Lamp_Bakery_2", props, new Vector3(0.72f, 0f, 11.2f), p);
+            MorrisColumn("MorrisColumn", props, new Vector3(2.5f, 0f, 6.6f), p);
         }
 
         static void BuildProps(Transform env, MaterialLibrary m)
@@ -281,23 +355,6 @@ namespace PetitParis.EditorTools
             Crate("Crate_A3", props, new Vector3(-1.45f, 0.35f, 20.0f), Vector3.one * 0.3f, 15f, m);
             Cylinder("TrashBin", props, new Vector3(0.42f, 0.375f, 20.6f), 0.42f, 0.75f, m.Lit("PP_BinGreen", new Color(0.2f, 0.32f, 0.22f)));
             PaperCup("Cup_A2", props, new Vector3(-0.2f, 0f, 21.8f), m);
-        }
-
-        /// <summary>건물 정면의 창문 (facing: +1 = +X를 향함, -1 = -X를 향함).</summary>
-        static void Windows(Transform parent, float facadeX, float facing, float z0, float z1, float[] rows, MaterialLibrary m)
-        {
-            var glass = m.Lit("PP_WindowGlass", new Color(0.22f, 0.27f, 0.33f));
-            var balcony = m.Lit("PP_BalconyIron", new Color(0.1f, 0.1f, 0.12f));
-            float x = facadeX + facing * 0.02f;
-            var group = Group($"Windows_{facadeX:0.0}_{z0:0.0}", parent);
-            for (float z = z0 + 0.8f; z < z1 - 0.5f; z += 1.6f)
-            {
-                foreach (float y in rows)
-                {
-                    RemoveCollider(Box("Window", group, new Vector3(x, y, z), new Vector3(0.04f, 1.2f, 0.85f), glass));
-                    RemoveCollider(Box("Balcony", group, new Vector3(facadeX + facing * 0.12f, y - 0.62f, z), new Vector3(0.22f, 0.05f, 1.05f), balcony));
-                }
-            }
         }
 
         static RatHintSign Hint(string name, Transform parent, Vector3 position, string text, TMP_FontAsset font)

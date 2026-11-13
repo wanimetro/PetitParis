@@ -68,7 +68,7 @@ namespace PetitParis.EditorTools
             // 보행자 1명 (발걸음 테스트) — 왼쪽 벽과 의자 사이를 왕복
             var npcs = Group("Pedestrians", null);
             Pedestrian("Pedestrian_Test", npcs, new[] { new Vector3(-2.4f, 0f, 3.3f), new Vector3(2.0f, 0f, 3.3f) },
-                PedestrianPath.LoopMode.PingPong, 0.9f, 2f, new Color(0.35f, 0.45f, 0.3f), m);
+                PedestrianPath.LoopMode.PingPong, 0.9f, 2f, new Color(0.35f, 0.45f, 0.3f), m, PedestrianStyle.Chef);
 
             // 체크포인트 (시작 지점 하나)
             var gameplay = Group("Gameplay", null);

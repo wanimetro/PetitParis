@@ -185,6 +185,7 @@ namespace PetitParis.EditorTools
             parts.reader = root.AddComponent<RatInputReader>();
             parts.calibrator = root.AddComponent<RatEyeCalibrator>();
             root.AddComponent<XROriginGuard>();
+            root.AddComponent<RatDesktopLook>(); // 헤드셋이 없을 때만 마우스 시점 전환
             parts.danger = root.AddComponent<RatDangerDetector>();
             parts.respawn = root.AddComponent<RatRespawn>();
             var sfx = root.AddComponent<AudioSource>();
@@ -262,14 +263,61 @@ namespace PetitParis.EditorTools
             go.transform.localPosition = restPosition;
             ConfigurePose(go.AddComponent<TrackedPoseDriver>(), refs, prefix);
 
-            var paw = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            paw.name = "Paw Visual";
-            RemoveCollider(paw);
-            paw.transform.SetParent(go.transform, false);
-            paw.transform.localPosition = new Vector3(0f, 0f, 0.01f);
-            paw.transform.localScale = new Vector3(0.05f, 0.035f, 0.07f);
-            paw.GetComponent<MeshRenderer>().sharedMaterial = pawMaterial;
+            BuildRatPaw(go.transform, pawMaterial, prefix == "Left");
             return go;
+        }
+
+        /// <summary>
+        /// 쥐 앞발 (자체 제작, 기본 도형). 추적 공간 단위 = 실제 손 크기라 사람 손처럼 보인다.
+        /// 분홍 손바닥 + 손가락 4개 + 작은 발톱 + 회색 털 손목. 충돌체 없음.
+        /// </summary>
+        static void BuildRatPaw(Transform controller, Material skin, bool isLeft)
+        {
+            var paw = new GameObject("Paw Visual").transform;
+            paw.SetParent(controller, false);
+            paw.localPosition = new Vector3(0f, -0.01f, 0.02f);
+            var lib = new MaterialLibrary();
+            var fur = lib.Lit("PP_RatFur", new Color(0.46f, 0.43f, 0.47f));
+            var claw = lib.Lit("PP_RatClaw", new Color(0.95f, 0.9f, 0.82f));
+
+            var wrist = RemoveCollider(GameObject.CreatePrimitive(PrimitiveType.Capsule));
+            wrist.name = "FurWrist";
+            wrist.transform.SetParent(paw, false);
+            wrist.transform.localPosition = new Vector3(0f, 0f, -0.07f);
+            wrist.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            wrist.transform.localScale = new Vector3(0.05f, 0.06f, 0.045f);
+            wrist.GetComponent<MeshRenderer>().sharedMaterial = fur;
+
+            var palm = Sphere("Palm", paw, new Vector3(0f, 0f, 0f), 1f, skin);
+            RemoveCollider(palm);
+            palm.transform.localScale = new Vector3(0.055f, 0.028f, 0.06f);
+
+            float side = isLeft ? 1f : -1f;
+            for (int i = 0; i < 4; i++)
+            {
+                float x = (-0.018f + i * 0.012f);
+                float splay = (i - 1.5f) * 9f;
+                var finger = RemoveCollider(GameObject.CreatePrimitive(PrimitiveType.Capsule));
+                finger.name = $"Finger_{i}";
+                finger.transform.SetParent(paw, false);
+                finger.transform.localPosition = new Vector3(x, -0.004f, 0.038f);
+                finger.transform.localRotation = Quaternion.Euler(100f, splay, 0f);
+                finger.transform.localScale = new Vector3(0.011f, 0.017f, 0.011f);
+                finger.GetComponent<MeshRenderer>().sharedMaterial = skin;
+
+                var tip = Sphere($"Claw_{i}", paw, Vector3.zero, 1f, claw);
+                RemoveCollider(tip);
+                tip.transform.localPosition = finger.transform.localPosition + finger.transform.localRotation * new Vector3(0f, 0.018f, 0f);
+                tip.transform.localScale = new Vector3(0.006f, 0.004f, 0.008f);
+            }
+            // 엄지 (안쪽)
+            var thumb = RemoveCollider(GameObject.CreatePrimitive(PrimitiveType.Capsule));
+            thumb.name = "Thumb";
+            thumb.transform.SetParent(paw, false);
+            thumb.transform.localPosition = new Vector3(0.03f * side, 0f, 0.012f);
+            thumb.transform.localRotation = Quaternion.Euler(90f, 40f * side, 0f);
+            thumb.transform.localScale = new Vector3(0.011f, 0.012f, 0.011f);
+            thumb.GetComponent<MeshRenderer>().sharedMaterial = skin;
         }
 
         /// <summary>손목 패널 (컨트롤러 위, 사용자 쪽으로 45도). 추적 공간 단위 = 실제 손 크기.</summary>
@@ -389,8 +437,8 @@ namespace PetitParis.EditorTools
             var chair = Group(name, parent);
             chair.localPosition = position;
             chair.localRotation = Quaternion.Euler(0f, yaw, 0f);
-            var frame = m.Lit("PP_ChairFrame", new Color(0.42f, 0.2f, 0.14f));
-            var seat = m.Lit("PP_ChairSeat", new Color(0.78f, 0.62f, 0.4f));
+            var frame = m.LitTex("PP_ChairFrame", PetitParisTextures.Wood(), new Color(0.75f, 0.6f, 0.55f));
+            var seat = m.LitTex("PP_ChairSeat", PetitParisTextures.Rattan(), Color.white);
 
             Box("Seat", chair, new Vector3(0f, 0.435f, 0f), new Vector3(0.42f, 0.03f, 0.42f), seat);
             for (int i = 0; i < 4; i++)
@@ -412,7 +460,7 @@ namespace PetitParis.EditorTools
             var table = Group(name, parent);
             table.localPosition = position;
             var metal = m.Lit("PP_TableMetal", new Color(0.18f, 0.18f, 0.2f));
-            Cylinder("Top", table, new Vector3(0f, 0.735f, 0f), 0.6f, 0.03f, m.Lit("PP_TableMarble", new Color(0.9f, 0.9f, 0.87f)));
+            Cylinder("Top", table, new Vector3(0f, 0.735f, 0f), 0.6f, 0.03f, m.LitTex("PP_TableMarble", PetitParisTextures.Marble(), Color.white));
             Cylinder("Pedestal", table, new Vector3(0f, 0.37f, 0f), 0.06f, 0.7f, metal);
             Cylinder("Base", table, new Vector3(0f, 0.01f, 0f), 0.42f, 0.02f, metal);
             return table;
@@ -433,7 +481,7 @@ namespace PetitParis.EditorTools
             var bench = Group(name, parent);
             bench.localPosition = position;
             bench.localRotation = Quaternion.Euler(0f, yaw, 0f);
-            var wood = m.Lit("PP_BenchWood", new Color(0.45f, 0.3f, 0.18f));
+            var wood = m.LitTex("PP_BenchWood", PetitParisTextures.Wood(), Color.white);
             var iron = m.Lit("PP_BenchIron", new Color(0.12f, 0.16f, 0.14f));
             Box("Seat", bench, new Vector3(0f, 0.44f, 0f), new Vector3(length, 0.03f, 0.38f), wood);
             Box("Back", bench, new Vector3(0f, 0.7f, 0.18f), new Vector3(length, 0.22f, 0.03f), wood);
@@ -492,15 +540,17 @@ namespace PetitParis.EditorTools
 
         public static void Crate(string name, Transform parent, Vector3 position, Vector3 size, float yaw, MaterialLibrary m)
         {
-            var go = Box(name, parent, position + Vector3.up * size.y * 0.5f, size, m.Lit("PP_Cardboard", new Color(0.66f, 0.5f, 0.32f)));
+            var go = Box(name, parent, position + Vector3.up * size.y * 0.5f, size, m.LitTex("PP_CrateWood", PetitParisTextures.Wood(), new Color(1f, 0.9f, 0.75f)));
             go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
         }
 
         // ───────────────────────── 보행자·자전거 ─────────────────────────
 
+        public enum PedestrianStyle { Casual, Chef, Waiter }
+
         /// <summary>기본 도형 보행자. 신발 2개에 FootstepHazard + 3D 발소리, 바닥 그림자.</summary>
         public static PedestrianPath Pedestrian(string name, Transform parent, Vector3[] waypoints, PedestrianPath.LoopMode mode,
-            float speed, float startDelay, Color coatColor, MaterialLibrary m)
+            float speed, float startDelay, Color coatColor, MaterialLibrary m, PedestrianStyle style = PedestrianStyle.Casual)
         {
             var root = Group(name, parent);
             var wpRoot = Group("Waypoints", root);
@@ -513,9 +563,22 @@ namespace PetitParis.EditorTools
 
             var coat = m.Lit("PP_Coat_" + ColorUtility.ToHtmlStringRGB(coatColor), coatColor);
             var pants = m.Lit("PP_HumanPants", new Color(0.2f, 0.26f, 0.42f));
-            var skin = m.Lit("PP_HumanSkin", new Color(0.85f, 0.7f, 0.6f));
+            var skin = m.Lit("PP_HumanSkin", new Color(0.86f, 0.68f, 0.56f));
             var shoeMat = m.Lit("PP_HumanShoe", new Color(0.12f, 0.09f, 0.07f));
             var blob = m.Blob("PP_BlobShadow", new Color(0f, 0f, 0f, 0.5f));
+            var white = m.Lit("PP_ChefWhite", new Color(0.95f, 0.94f, 0.9f));
+            var black = m.Lit("PP_WaiterBlack", new Color(0.08f, 0.08f, 0.09f));
+            if (style == PedestrianStyle.Chef)
+            {
+                coat = white;
+                pants = m.LitTex("PP_ChefCheck", PetitParisTextures.Checker("PP_ChefCheckTex", new Color(0.1f, 0.1f, 0.12f), new Color(0.92f, 0.92f, 0.9f), 12), Color.white);
+            }
+            else if (style == PedestrianStyle.Waiter)
+            {
+                coat = white;
+                pants = black;
+                shoeMat = black;
+            }
 
             var body = Group("Body", root);
             RemoveCollider(Box("Hips", body, new Vector3(0f, 0.9f, 0f), new Vector3(0.36f, 0.14f, 0.22f), pants));
@@ -523,6 +586,28 @@ namespace PetitParis.EditorTools
             RemoveCollider(Cylinder("Arm_L", body, new Vector3(-0.26f, 1.15f, 0f), 0.09f, 0.58f, coat));
             RemoveCollider(Cylinder("Arm_R", body, new Vector3(0.26f, 1.15f, 0f), 0.09f, 0.58f, coat));
             RemoveCollider(Sphere("Head", body, new Vector3(0f, 1.62f, 0f), 0.22f, skin));
+            RemoveCollider(Sphere("Nose", body, new Vector3(0f, 1.61f, 0.11f), 0.05f, skin));
+            if (style == PedestrianStyle.Chef)
+            {
+                // 셰프: 높은 모자, 빨간 스카프, 두 줄 단추, 앞치마, 콧수염
+                RemoveCollider(Cylinder("ToqueBand", body, new Vector3(0f, 1.79f, 0f), 0.22f, 0.12f, white));
+                var puff = RemoveCollider(Sphere("ToquePuff", body, new Vector3(0f, 1.93f, 0f), 0.3f, white));
+                puff.transform.localScale = new Vector3(0.3f, 0.22f, 0.3f);
+                RemoveCollider(Box("Neckerchief", body, new Vector3(0f, 1.47f, 0.1f), new Vector3(0.16f, 0.07f, 0.06f), m.Lit("PP_ChefRed", new Color(0.75f, 0.12f, 0.12f))));
+                for (int i = 0; i < 3; i++)
+                    foreach (float x in new[] { -0.07f, 0.07f })
+                        RemoveCollider(Sphere("Button", body, new Vector3(x, 1.36f - i * 0.12f, 0.122f), 0.03f, black));
+                RemoveCollider(Box("Apron", body, new Vector3(0f, 0.78f, 0.13f), new Vector3(0.38f, 0.55f, 0.02f), white));
+                RemoveCollider(Box("Mustache", body, new Vector3(0f, 1.575f, 0.112f), new Vector3(0.1f, 0.02f, 0.02f), m.Lit("PP_Mustache", new Color(0.2f, 0.12f, 0.08f))));
+            }
+            else if (style == PedestrianStyle.Waiter)
+            {
+                // 파리 카페 웨이터: 흰 셔츠 + 검은 조끼 + 나비넥타이 + 발목까지 오는 긴 흰 앞치마
+                RemoveCollider(Box("Vest", body, new Vector3(0f, 1.2f, 0.005f), new Vector3(0.44f, 0.5f, 0.24f), black));
+                RemoveCollider(Box("BowTie", body, new Vector3(0f, 1.46f, 0.125f), new Vector3(0.1f, 0.04f, 0.02f), black));
+                RemoveCollider(Box("LongApron", body, new Vector3(0f, 0.55f, 0.13f), new Vector3(0.4f, 0.75f, 0.02f), white));
+                RemoveCollider(Sphere("Hair", body, new Vector3(0f, 1.68f, -0.01f), 0.21f, black)).transform.localScale = new Vector3(0.23f, 0.15f, 0.23f);
+            }
 
             var footL = Shoe("Foot_L", root, shoeMat);
             var footR = Shoe("Foot_R", root, shoeMat);
@@ -929,6 +1014,21 @@ namespace PetitParis.EditorTools
         public Material Blob(string name, Color color) => Get(name, FindShader(PetitParisPaths.BlobShader), color);
 
         public Material Custom(string name, Shader shader, Color color) => Get(name, shader, color);
+
+        /// <summary>질감 + 색조 (Simple Lit, 안개·그림자 지원).</summary>
+        public Material LitTex(string name, Texture2D texture, Color tint) => WithTexture(Lit(name, tint), texture);
+
+        /// <summary>스스로 빛나 보이는 질감 (Unlit: 창문 불빛, 강물, 원경).</summary>
+        public Material UnlitTex(string name, Texture2D texture, Color tint) => WithTexture(Unlit(name, tint), texture);
+
+        static Material WithTexture(Material mat, Texture2D texture)
+        {
+            if (texture == null) return mat;
+            if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", texture);
+            if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", texture);
+            EditorUtility.SetDirty(mat);
+            return mat;
+        }
 
         Material Get(string name, Shader shader, Color color)
         {

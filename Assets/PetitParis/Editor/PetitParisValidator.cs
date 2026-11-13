@@ -185,6 +185,16 @@ namespace PetitParis.EditorTools
                         report.Check(so.FindProperty(f)?.objectReferenceValue != null, $"GameFlow.{f} 연결", $"GameFlow.{f}가 비어 있습니다.");
                 }
                 report.Check(walkers.Length == 2, "보행자 2명", $"보행자가 {walkers.Length}명입니다 (기획: 2명).", warnOnly: true);
+
+                var guide = Object.FindAnyObjectByType<RatGuideArrow>();
+                if (report.Check(guide != null, "내비게이션 화살표(RatGuideArrow) 있음", "RatGuideArrow가 없습니다.", warnOnly: true))
+                {
+                    var gso = new SerializedObject(guide);
+                    var route = gso.FindProperty("route");
+                    report.Check(route != null && route.arraySize >= 2, $"안내 경로 점 {route?.arraySize ?? 0}개", "안내 경로(route)가 2점 미만입니다.");
+                    report.Check(gso.FindProperty("arrow")?.objectReferenceValue != null, "화살표 오브젝트 연결", "RatGuideArrow.arrow가 비어 있습니다.");
+                }
+                report.Check(RenderSettings.skybox != null && RenderSettings.fog, "해 질 녘 하늘·안개 설정", "Skybox 또는 안개가 꺼져 있습니다 (메뉴 3번으로 다시 생성).", warnOnly: true);
             }
         }
 

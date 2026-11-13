@@ -28,6 +28,10 @@ namespace PetitParis
         public const string SignBakery = "빵집";
         public const string SignCafeLatin = "CAFÉ";
         public const string SignBakeryLatin = "BOULANGERIE";
+        public const string SignCafeName = "CAFÉ DE LA BUTTE";
+        public const string SignFlowers = "FLEURS";
+        public const string SignBooks = "LIBRAIRIE";
+        public const string StreetName = "RUE DU PETIT-RAT\n18e Arr.";
 
         public const string StatusExplore = "탐험 중";
         public const string StatusDanger = "위험! 발걸음 주의";

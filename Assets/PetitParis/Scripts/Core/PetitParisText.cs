@@ -16,9 +16,10 @@ namespace PetitParis
             "왼쪽 스틱  이동\n" +
             "오른쪽 스틱  30도 회전\n" +
             "오른쪽 트리거  순간 질주\n" +
+            "왼쪽 그립 누르고 있기  달리기\n" +
             "A  점프     B  웅크리기\n" +
             "왼쪽 메뉴 길게  시점 다시 맞추기\n" +
-            "(PC: WASD 이동, 마우스 오른쪽 드래그로 둘러보기)";
+            "(PC: WASD 이동, Shift 달리기, 클릭 질주, 마우스 오른쪽 드래그로 둘러보기)";
 
         public const string HintFootsteps = "발소리가 커지면\n의자 아래로 숨어요";
         public const string HintHide = "의자 아래는 안전해요";
@@ -41,6 +42,7 @@ namespace PetitParis
         public const string StatusCrouch = "웅크림";
         public const string StatusDashReady = "질주 가능";
         public const string StatusDashing = "질주!";
+        public const string StatusRunning = "달리는 중";
         public const string StatusDashCooldown = "질주 대기";
         public const string StatusCannotStand = "좁아서 일어설 수 없어요";
         public const string StatusCheckpoint = "체크포인트";

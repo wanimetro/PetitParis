@@ -23,6 +23,9 @@ namespace PetitParis
         [Header("기능 사용")]
         public bool enableDash = true;
 
+        [Tooltip("누르고 있는 동안 빨라지는 달리기 (VR 왼손 그립 / PC 왼쪽 Shift).")]
+        public bool enableRun = true;
+
         [Tooltip("멀미가 심하면 끈다. 끄면 A 버튼이 무시된다.")]
         public bool enableJump = true;
 

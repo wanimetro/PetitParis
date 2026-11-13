@@ -19,6 +19,7 @@ namespace PetitParis
         [SerializeField] RatDashController dash;
         [SerializeField] RatCrouchController crouch;
         [SerializeField] RatRespawn respawn;
+        [SerializeField] RatLocomotionController locomotion;
         [SerializeField, Range(0.05f, 1f)] float refreshInterval = 0.15f;
 
         readonly StringBuilder sb = new StringBuilder(256);
@@ -33,6 +34,7 @@ namespace PetitParis
             if (dash == null) dash = GetComponentInParent<RatScaleRig>()?.GetComponentInChildren<RatDashController>(true);
             if (crouch == null) crouch = GetComponentInParent<RatScaleRig>()?.GetComponentInChildren<RatCrouchController>(true);
             if (respawn == null) respawn = GetComponentInParent<RatRespawn>();
+            if (locomotion == null) locomotion = GetComponentInParent<RatScaleRig>()?.GetComponentInChildren<RatLocomotionController>(true);
         }
 
         void Update()
@@ -69,6 +71,7 @@ namespace PetitParis
                 else if (dash.CooldownRemaining > 0f) sb.Append(PetitParisText.StatusDashCooldown).Append(' ').Append(dash.CooldownRemaining.ToString("0.0")).Append(PetitParisText.Seconds);
                 else sb.Append(PetitParisText.StatusDashReady);
             }
+            if (locomotion != null && locomotion.IsRunning) sb.Append("   ").Append(PetitParisText.StatusRunning);
             if (crouch != null && crouch.IsCrouched)
                 sb.Append("   ").Append(crouch.IsWaitingToStand ? PetitParisText.StatusCannotStand : PetitParisText.StatusCrouch);
 

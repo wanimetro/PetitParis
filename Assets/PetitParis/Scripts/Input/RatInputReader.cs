@@ -22,6 +22,7 @@ namespace PetitParis
         public const string MoveAction = "Rat/Move";
         public const string TurnAction = "Rat/Turn";
         public const string DashAction = "Rat/Dash";
+        public const string RunAction = "Rat/Run";
         public const string JumpAction = "Rat/Jump";
         public const string CrouchAction = "Rat/Crouch";
         public const string InteractAction = "Rat/Interact";
@@ -38,7 +39,7 @@ namespace PetitParis
 
         public static readonly string[] RequiredActionNames =
         {
-            MoveAction, TurnAction, DashAction, JumpAction, CrouchAction, InteractAction, CalibrateAction,
+            MoveAction, TurnAction, DashAction, RunAction, JumpAction, CrouchAction, InteractAction, CalibrateAction,
             HeadPositionAction, HeadRotationAction, HeadTrackingStateAction,
             LeftPositionAction, LeftRotationAction, LeftTrackingStateAction,
             RightPositionAction, RightRotationAction, RightTrackingStateAction,
@@ -47,7 +48,7 @@ namespace PetitParis
         [Tooltip("Assets/PetitParis/Settings/PetitParisInput.inputactions")]
         [SerializeField] InputActionAsset actions;
 
-        InputAction move, turn, dash, jump, crouch, interact, calibrate;
+        InputAction move, turn, dash, run, jump, crouch, interact, calibrate;
         InputAction headPosition, headState, leftState, rightState;
         bool resolved;
 
@@ -60,6 +61,7 @@ namespace PetitParis
         public Vector2 Move => ReadVector2(move);
         public Vector2 Turn => ReadVector2(turn);
         public bool DashHeld => IsPressed(dash);
+        public bool RunHeld => IsPressed(run);
         public bool JumpHeld => IsPressed(jump);
         public bool CrouchHeld => IsPressed(crouch);
         public bool InteractHeld => IsPressed(interact);
@@ -96,6 +98,7 @@ namespace PetitParis
             move = Find(MoveAction);
             turn = Find(TurnAction);
             dash = Find(DashAction);
+            run = Find(RunAction);
             jump = Find(JumpAction);
             crouch = Find(CrouchAction);
             interact = Find(InteractAction);

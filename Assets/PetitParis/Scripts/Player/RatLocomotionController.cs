@@ -43,6 +43,9 @@ namespace PetitParis
         [Tooltip("감속 (월드 m/s²). 스틱을 놓았을 때 부드럽게 멈춘다.")]
         [SerializeField, Range(0.05f, 5f)] float deceleration = 1.8f;
 
+        [Tooltip("달리기(왼손 그립 / 왼쪽 Shift)를 누르고 있을 때 걷기 속도 배율. RatComfortSettings 체감 속도 상한도 함께 적용된다.")]
+        [SerializeField, Range(1f, 3f)] float runMultiplier = 1.8f;
+
         [Tooltip("공중에서의 조작 비율.")]
         [SerializeField, Range(0f, 1f)] float airControl = 0.4f;
 
@@ -87,6 +90,7 @@ namespace PetitParis
         public bool IsInputLocked => inputLocked;
         public bool IsSuspended => suspended;
         public Vector2 LastStick { get; private set; }
+        public bool IsRunning { get; private set; }
 
         /// <summary>플레이어 체감 기준 중력 (월드 m/s²).</summary>
         public float GravityMagnitude
@@ -157,7 +161,9 @@ namespace PetitParis
             LastStick = stick;
             GetYawBasis(up, out Vector3 forward, out Vector3 right);
             Vector3 wishDirection = forward * stick.y + right * stick.x;   // 크기 0~1 = 스틱 세기
-            float walkSpeed = rig.Config.walkSpeed * (crouch != null ? crouch.SpeedMultiplier : 1f);
+            bool running = !inputLocked && input.RunHeld && (comfort == null || comfort.enableRun) && (crouch == null || !crouch.IsCrouched);
+            IsRunning = running && stick.sqrMagnitude > 0.01f;
+            float walkSpeed = rig.Config.walkSpeed * (crouch != null ? crouch.SpeedMultiplier : 1f) * (running ? runMultiplier : 1f);
             Vector3 targetPlanar = wishDirection * walkSpeed;
 
             // ── 2. 질주 (방향은 시작할 때 고정, 속도 곡선은 RatDashController가 계산) ──

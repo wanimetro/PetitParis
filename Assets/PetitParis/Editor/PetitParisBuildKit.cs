@@ -149,7 +149,6 @@ namespace PetitParis.EditorTools
             cam.farClipPlane = config.farClip;
             cam.allowHDR = false;
             cam.allowMSAA = true;
-            cam.stereoTargetEye = StereoTargetEyeMask.Both;
             camGO.AddComponent<AudioListener>();
             ConfigurePose(camGO.AddComponent<TrackedPoseDriver>(), refs, "Head");
             parts.camera = cam;

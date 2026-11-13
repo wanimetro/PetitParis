@@ -38,11 +38,11 @@ namespace PetitParis.EditorTools
 
         static void CheckRig(Report report)
         {
-            var origins = Object.FindObjectsByType<XROrigin>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var origins = Object.FindObjectsByType<XROrigin>(FindObjectsInactive.Include);
             report.Check(origins.Length == 1, $"XR Origin 1개", $"XR Origin이 {origins.Length}개입니다 (정확히 1개여야 함).");
-            int mainCams = Object.FindObjectsByType<Camera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None).Count(c => c.CompareTag("MainCamera"));
+            int mainCams = Object.FindObjectsByType<Camera>(FindObjectsInactive.Exclude).Count(c => c.CompareTag("MainCamera"));
             report.Check(mainCams == 1, "MainCamera 1개", $"MainCamera가 {mainCams}개입니다.");
-            int listeners = Object.FindObjectsByType<AudioListener>(FindObjectsInactive.Exclude, FindObjectsSortMode.None).Length;
+            int listeners = Object.FindObjectsByType<AudioListener>(FindObjectsInactive.Exclude).Length;
             report.Check(listeners == 1, "AudioListener 1개", $"AudioListener가 {listeners}개입니다.");
 
             var rig = Object.FindAnyObjectByType<RatScaleRig>();
@@ -66,9 +66,9 @@ namespace PetitParis.EditorTools
         /// <summary>이동 처리 중복 점검: 이동 Provider는 RatLocomotionController 하나뿐이어야 한다.</summary>
         static void CheckLocomotion(Report report)
         {
-            var mediators = Object.FindObjectsByType<LocomotionMediator>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var mediators = Object.FindObjectsByType<LocomotionMediator>(FindObjectsInactive.Include);
             report.Check(mediators.Length == 1, "LocomotionMediator 1개", $"LocomotionMediator가 {mediators.Length}개입니다.");
-            var transformers = Object.FindObjectsByType<XRBodyTransformer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var transformers = Object.FindObjectsByType<XRBodyTransformer>(FindObjectsInactive.Include);
             report.Check(transformers.Length == 1, "XRBodyTransformer 1개", $"XRBodyTransformer가 {transformers.Length}개입니다.");
             if (transformers.Length == 1)
             {
@@ -78,7 +78,7 @@ namespace PetitParis.EditorTools
                     "XRBodyTransformer가 CharacterController를 사용하지 않습니다 → 벽을 통과할 수 있습니다.");
             }
 
-            var providers = Object.FindObjectsByType<LocomotionProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var providers = Object.FindObjectsByType<LocomotionProvider>(FindObjectsInactive.Include);
             var allowed = new HashSet<string> { nameof(RatLocomotionController), nameof(RatComfortApplier), nameof(SnapTurnProvider) };
             var unexpected = providers.Where(p => !allowed.Contains(p.GetType().Name)).Select(p => $"{p.GetType().Name}({p.name})").ToList();
             report.Check(unexpected.Count == 0, $"이동 Provider: {string.Join(", ", providers.Select(p => p.GetType().Name))}",
@@ -91,7 +91,7 @@ namespace PetitParis.EditorTools
                 report.Check(m != null && m.objectReferenceValue != null, $"{p.GetType().Name}.Mediator 연결", $"{p.GetType().Name}의 Mediator가 비어 있습니다 (실행 시 자동 탐색).", warnOnly: true);
             }
 
-            var snaps = Object.FindObjectsByType<SnapTurnProvider>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var snaps = Object.FindObjectsByType<SnapTurnProvider>(FindObjectsInactive.Include);
             if (report.Check(snaps.Length == 1, "SnapTurnProvider 1개", $"SnapTurnProvider가 {snaps.Length}개입니다."))
             {
                 var so = new SerializedObject(snaps[0]);
@@ -115,7 +115,7 @@ namespace PetitParis.EditorTools
             }
 
             bool vignetteLinked = false;
-            foreach (var mb in Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var mb in Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
             {
                 if (mb == null || mb.GetType().Name != "TunnelingVignetteController") continue;
                 var list = new SerializedObject(mb).FindProperty("m_LocomotionVignetteProviders");
@@ -162,18 +162,18 @@ namespace PetitParis.EditorTools
                 report.Check(respawn == null || new SerializedObject(respawn).FindProperty("checkpoints")?.objectReferenceValue != null,
                     "RatRespawn → CheckpointManager 연결", "RatRespawn에 CheckpointManager가 비어 있습니다 (실행 시 자동 탐색).", warnOnly: true);
 
-            var zones = Object.FindObjectsByType<RatSafeZone>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var zones = Object.FindObjectsByType<RatSafeZone>(FindObjectsInactive.Include);
             int badZones = zones.Count(z => z.GetComponent<Collider>() == null || !z.GetComponent<Collider>().isTrigger);
             report.Check(zones.Length > 0, $"안전 구역 {zones.Length}개", "안전 구역(RatSafeZone)이 없습니다.");
             report.Check(badZones == 0, "안전 구역 Collider = Trigger", $"Trigger가 아닌 안전 구역 {badZones}개 (실행 시 자동으로 Trigger로 바뀜).", warnOnly: true);
 
-            var hazards = Object.FindObjectsByType<FootstepHazard>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var hazards = Object.FindObjectsByType<FootstepHazard>(FindObjectsInactive.Include);
             int solid = hazards.Count(h => !h.GetComponent<BoxCollider>().isTrigger);
             report.Check(hazards.Length > 0, $"위험 물체(FootstepHazard) {hazards.Length}개", "위험 물체가 없습니다.", warnOnly: true);
             report.Check(solid == 0, "위험 물체 Collider = Trigger (쥐를 밀어내지 않음)", $"Trigger가 아닌 위험 물체 {solid}개 → 쥐를 밀 수 있습니다.");
 
-            var walkers = Object.FindObjectsByType<PedestrianPath>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            report.Info($"보행자 {walkers.Length}명, 자전거 {Object.FindObjectsByType<BicycleHazard>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length}대");
+            var walkers = Object.FindObjectsByType<PedestrianPath>(FindObjectsInactive.Include);
+            report.Info($"보행자 {walkers.Length}명, 자전거 {Object.FindObjectsByType<BicycleHazard>(FindObjectsInactive.Include).Length}대");
 
             if (isGame)
             {
@@ -208,7 +208,7 @@ namespace PetitParis.EditorTools
                 report.Check(v != null, $"{id} {v}", $"{id} 미설치", warnOnly: id == "com.unity.xr.management" || id == "com.unity.xr.openxr");
             }
             report.Check(Version("com.unity.xr.interaction.toolkit") == "3.3.2", "XRI 3.3.2 (코드 작성 기준 버전)", $"XRI 버전이 {Version("com.unity.xr.interaction.toolkit")}입니다. 코드는 3.3.2 기준으로 작성되었습니다.", warnOnly: true);
-            report.Check(Object.FindObjectsByType<RatLocomotionController>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length <= 1, "이동 컨트롤러 중복 없음", "RatLocomotionController가 여러 개입니다.");
+            report.Check(Object.FindObjectsByType<RatLocomotionController>(FindObjectsInactive.Include).Length <= 1, "이동 컨트롤러 중복 없음", "RatLocomotionController가 여러 개입니다.");
 
             report.Check(EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android, "빌드 타깃 Android",
                 $"빌드 타깃 {EditorUserBuildSettings.activeBuildTarget}. Build Profiles에서 Android로 Switch Platform 하세요.", warnOnly: true);

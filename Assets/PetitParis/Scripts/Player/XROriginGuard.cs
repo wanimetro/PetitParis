@@ -16,7 +16,7 @@ namespace PetitParis
         void Awake()
         {
             var mine = GetComponent<XROrigin>();
-            var origins = FindObjectsByType<XROrigin>(FindObjectsSortMode.None);
+            var origins = FindObjectsByType<XROrigin>();
             foreach (var origin in origins)
             {
                 if (origin == mine || !origin.gameObject.activeInHierarchy) continue;
@@ -25,7 +25,7 @@ namespace PetitParis
                 origin.gameObject.SetActive(false);
             }
 
-            var listeners = FindObjectsByType<AudioListener>(FindObjectsSortMode.None);
+            var listeners = FindObjectsByType<AudioListener>();
             int active = 0;
             foreach (var listener in listeners)
                 if (listener.isActiveAndEnabled) active++;

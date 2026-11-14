@@ -153,7 +153,14 @@ namespace PetitParis.EditorTools
             var crumbsRoot = Group("Crumbs", gameplay);
             PlaceCrumbs(crumbsRoot, m);
             var events = Group("Events", gameplay);
-            PetitParisGameplayKit.FallingBaguettes("FallingBaguettes_Bakery", events, -2.95f, 0.7f, 7.4f, 12.9f, 2.6f, 3, m);
+            // 바게트는 빵집 차양(정면 x -3.0에서 1.45m 튀어나옴, 앞 끝 높이 약 2.75m) 위를 굴러와 앞 끝에서 떨어진다 → 차양 밑은 안전
+            var baguettes = PetitParisGameplayKit.FallingBaguettes("FallingBaguettes_Bakery", events, -2.95f, 0.7f, 7.4f, 12.9f, 2.6f, 3, m);
+            var bso = new SerializedObject(baguettes);
+            SetBool(bso, "dropFromEdge", true);
+            bso.FindProperty("edgeA").vector3Value = new Vector3(-1.5f, 2.75f, 7.55f);
+            bso.FindProperty("edgeB").vector3Value = new Vector3(-1.5f, 2.75f, 12.45f);
+            bso.FindProperty("edgeOutward").vector3Value = Vector3.right;
+            bso.ApplyModifiedPropertiesWithoutUndo();
             PetitParisGameplayKit.Pigeons("Pigeons_Quai_W", events, new Vector3(-1.9f, 0f, 24.6f), 5, 0.45f, m, 3);
             PetitParisGameplayKit.Pigeons("Pigeons_Quai_E", events, new Vector3(2.4f, 0f, 24.5f), 6, 0.6f, m, 5);
             PetitParisGameplayKit.Pigeons("Pigeons_Road", events, new Vector3(2.4f, 0f, 3.2f), 4, 0.5f, m, 7);

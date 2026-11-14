@@ -69,10 +69,10 @@ namespace PetitParis
         public const string MessageSpotted = "사람에게 들켰어요! 숨어요!";
         public const string MessageEscaped = "휴, 따돌렸어요!";
         public const string MessageChase = "웨이터가 빗자루를 들고 쫓아와요! 숨을 곳으로!";
-        public const string MessageBaguette = "위에서 바게트가 떨어져요! 그림자를 피해요!";
+        public const string MessageBaguette = "차양 위에서 바게트가 굴러떨어져요! 차양 밑은 안전해요";
         public const string MessageBaguetteHit = "바게트에 맞았어요! 체크포인트로 돌아갑니다";
         public const string MessageBaguetteNearMiss = "아슬아슬! 바게트를 피했어요";
-        public const string MessageBaguetteDone = "빵집 2층 창문이 닫혔어요. 휴~";
+        public const string MessageBaguetteDone = "빵집 주인이 바게트 바구니를 치웠어요. 휴~";
         public const string MessageKitchen = "주방이다! 요리사 발밑을 조심해요";
         public const string MessageSeine = "센강이 보여요! …어디선가 치즈 냄새가 나요";
 

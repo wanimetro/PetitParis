@@ -95,6 +95,18 @@ namespace PetitParis
             if (gameFlow == null) gameFlow = FindAnyObjectByType<PetitParisGameFlow>();
             if (zone == null) zone = GetComponent<Collider>();
             if (zone != null) zone.isTrigger = true;
+            // 소리 위치를 낙하 지점으로 옮기는데, AudioSource가 이 오브젝트(구역·바게트의 부모)에 붙어 있으면
+            // 구역째 움직여 쥐가 맞은 뒤 구역이 공중에 떠 다시는 떨어지지 않는다 → 전용 자식으로 옮긴다
+            if (audioSource != null && (audioSource.transform == transform || (zone != null && audioSource.transform == zone.transform)))
+            {
+                var old = audioSource;
+                var child = new GameObject("DropAudio").AddComponent<AudioSource>();
+                child.transform.SetParent(transform, false);
+                child.outputAudioMixerGroup = old.outputAudioMixerGroup;
+                child.volume = old.volume;
+                Destroy(old);
+                audioSource = child;
+            }
             PetitParisAudio.Configure3D(audioSource, 0.4f, 10f);
 
             int n = items != null ? items.Length : 0;

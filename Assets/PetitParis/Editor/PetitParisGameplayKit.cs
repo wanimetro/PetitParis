@@ -294,7 +294,10 @@ namespace PetitParis.EditorTools
             SetObjectArray(so, "shadows", shadows);
             SetFloat(so, "dropHeight", dropHeight);
             SetObject(so, "crumbTemplate", template);
-            SetObject(so, "audioSource", root.gameObject.AddComponent<AudioSource>());
+            // 소리 위치를 낙하 지점으로 옮기므로 구역(root)이 아닌 별도 자식에 둔다 (root에 두면 구역째 움직인다)
+            var audioGO = new GameObject("DropAudio");
+            audioGO.transform.SetParent(root, false);
+            SetObject(so, "audioSource", audioGO.AddComponent<AudioSource>());
             so.ApplyModifiedPropertiesWithoutUndo();
             return fall;
         }

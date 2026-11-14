@@ -580,13 +580,14 @@ namespace PetitParis.EditorTools
             TexBoxXZ("Upper_Mass", k, x0, x1, z0, z1, ceil, northSpec.TopY, p.plasterCream, 2f);
 
             // ── 실내 마감: 흑백 타일 바닥, 흰 타일 벽 ──
-            var floorTile = m.LitTex("PP_KitchenFloor", PetitParisTextures.Checker("PP_KitchenFloorTex", new Color(0.12f, 0.12f, 0.13f), new Color(0.93f, 0.91f, 0.86f), 8), Color.white);
+            var floorTile = PolyHaven(m, "PP_KitchenFloor", "checkered_pavement_tiles", 2f, 2.4f, new Color(1.45f, 1.4f, 1.35f),
+                () => PetitParisTextures.Checker("PP_KitchenFloorTex", new Color(0.12f, 0.12f, 0.13f), new Color(0.93f, 0.91f, 0.86f), 8));
             var wallTile = m.LitTex("PP_KitchenWallTile", PetitParisTextures.Checker("PP_KitchenWallTileTex", new Color(0.97f, 0.97f, 0.95f), new Color(0.88f, 0.9f, 0.9f), 16), Color.white);
             var steel = m.Lit("PP_Steel", new Color(0.7f, 0.72f, 0.75f));
             var darkSteel = m.Lit("PP_DarkSteel", new Color(0.22f, 0.22f, 0.24f));
             var copper = m.Lit("PP_Copper", new Color(0.82f, 0.46f, 0.26f));
             var woodTop = m.LitTex("PP_ButcherBlock", PetitParisTextures.Wood(), new Color(1f, 0.85f, 0.65f));
-            var plankMat = m.LitTex("PP_PlankWood", PetitParisTextures.Wood(), new Color(0.9f, 0.75f, 0.55f));
+            var plankMat = PolyHaven(m, "PP_PlankWood", "brown_planks_05", 1f, 0.6f, new Color(1f, 0.85f, 0.65f), () => PetitParisTextures.Wood());
             var glow = m.Unlit("PP_StoveGlow", new Color(1f, 0.55f, 0.18f));
             var cheese = m.Lit("PP_CheeseWheel", new Color(1f, 0.8f, 0.3f));
             var cheeseRind = m.Lit("PP_CheeseRind", new Color(0.9f, 0.62f, 0.2f));

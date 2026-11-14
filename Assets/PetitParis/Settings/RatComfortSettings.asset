@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5154cc5532fa456ebc125202f991a0cb, type: 3}
+  m_Name: RatComfortSettings
+  m_EditorClassIdentifier: PetitParis.Runtime::PetitParis.RatComfortSettings
+  snapTurnDegrees: 30
+  snapTurnDebounce: 0.5
+  enableDash: 1
+  enableJump: 1
+  vignetteOnDash: 1
+  vignetteOnWalk: 0
+  vignetteInAir: 0
+  limitSpeed: 1
+  maxPerceivedSpeed: 5

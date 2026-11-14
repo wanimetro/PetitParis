@@ -141,14 +141,14 @@ namespace PetitParis.EditorTools
             float stone = Mathf.SmoothStep(0.04f, 0.16f, edge);
             Color[] palette =
             {
-                new Color(0.48f, 0.46f, 0.44f), new Color(0.42f, 0.4f, 0.4f), new Color(0.52f, 0.48f, 0.43f),
-                new Color(0.38f, 0.38f, 0.41f), new Color(0.5f, 0.45f, 0.4f),
+                new Color(0.62f, 0.6f, 0.57f), new Color(0.56f, 0.54f, 0.54f), new Color(0.66f, 0.61f, 0.55f),
+                new Color(0.52f, 0.52f, 0.56f), new Color(0.64f, 0.58f, 0.52f),
             };
             Color baseColor = palette[Mathf.FloorToInt(r * palette.Length) % palette.Length];
             float dome = 0.85f + 0.25f * Mathf.SmoothStep(0.05f, 0.4f, edge);
             float grain = 0.85f + 0.3f * Fbm(u, v, 32, 3, 5);
             Color stoneColor = Tint(baseColor, dome * grain);
-            Color gap = new Color(0.16f, 0.14f, 0.13f);
+            Color gap = new Color(0.26f, 0.23f, 0.21f);
             return Color.Lerp(gap, stoneColor, stone);
         }
 

@@ -12,7 +12,7 @@ Unity 6000.3.9f1, URP 17.3, XR Interaction Toolkit 3.3.2, Input System 1.18, Ope
 - 좌표계: 월드는 실제 크기(미터). 쥐 크기는 `RatScaleConfig.trackingScale`(Rat Tracking Space 스케일)로만 표현한다. 속도·충돌체·거리 값은 모두 월드 미터로 다룬다.
 - 이동 경로는 하나: `RatLocomotionController` → LocomotionMediator → XRBodyTransformer → CharacterController. XRI ContinuousMove/Gravity/Jump Provider를 추가하지 않는다. 회전은 SnapTurnProvider만 쓴다.
 - 카메라 Transform은 TrackedPoseDriver만 쓴다. Roll, Pitch, Head Bob은 넣지 않는다. 순간 시점 이동(캘리브레이션, 리스폰)에는 ScreenFader 페이드를 쓴다.
-  - 예외: 헤드셋이 없는 PC 대체 모드에서만 `RatDesktopLook`이 카메라 TrackedPoseDriver를 끄고 마우스(오른쪽 버튼 드래그)로 Pitch를 쓴다. XR 장치나 시뮬레이터가 있으면 자동으로 원래대로 돌아간다.
+  - PC 대체 모드(헤드셋 추적 없음)에서는 `RatDesktopLook`이 마우스(오른쪽 버튼 드래그)로 XR Origin Yaw와 Rat Tracking Space Pitch를 바꾼다. 카메라 자체는 여기서도 건드리지 않는다 (장치가 없어도 TrackedPoseDriver가 카메라 자세를 계속 덮어쓰기 때문). 헤드셋 추적이 들어오면 자동으로 원래대로 돌아간다.
 - 외형: 해 질 녘 파리, 애니메이션 영화 같은 따뜻한 스타일라이즈드 톤 (실사 아님, Quest 성능 우선). 질감은 `Editor/PetitParisTextures.cs`가 코드로 생성, 건물·소품은 `Editor/PetitParisParisKit.cs`.
 - 특정 영화 캐릭터(예: 라따뚜이의 레미)나 영화 이미지는 쓰지 않는다. 등장인물은 오리지널 디자인(웨이터, 셰프 등).
 

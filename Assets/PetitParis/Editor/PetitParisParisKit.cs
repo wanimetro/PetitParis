@@ -30,7 +30,7 @@ namespace PetitParis.EditorTools
             {
                 var p = new Palette();
                 p.cobble = m.LitTex("PP_Cobble", PetitParisTextures.Cobblestone(), Color.white);
-                p.cobbleDark = m.LitTex("PP_CobbleDark", PetitParisTextures.Cobblestone(), new Color(0.82f, 0.8f, 0.82f));
+                p.cobbleDark = m.LitTex("PP_CobbleDark", PetitParisTextures.Cobblestone(), new Color(0.9f, 0.88f, 0.9f));
                 p.slabs = m.LitTex("PP_Slabs", PetitParisTextures.SidewalkSlabs(), Color.white);
                 p.slabsWarm = m.LitTex("PP_SlabsWarm", PetitParisTextures.SidewalkSlabs(), new Color(1f, 0.93f, 0.85f));
                 p.asphalt = m.LitTex("PP_AsphaltTex", PetitParisTextures.Asphalt(), Color.white);
@@ -106,9 +106,9 @@ namespace PetitParis.EditorTools
             }
             RenderSettings.sun = light;
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.64f, 0.64f, 0.86f);
-            RenderSettings.ambientEquatorColor = new Color(0.8f, 0.64f, 0.6f);
-            RenderSettings.ambientGroundColor = new Color(0.42f, 0.34f, 0.32f);
+            RenderSettings.ambientSkyColor = new Color(0.78f, 0.75f, 0.96f);
+            RenderSettings.ambientEquatorColor = new Color(0.95f, 0.78f, 0.7f);
+            RenderSettings.ambientGroundColor = new Color(0.55f, 0.46f, 0.42f);
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = new Color(0.74f, 0.62f, 0.7f);

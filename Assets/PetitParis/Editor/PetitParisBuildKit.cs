@@ -230,7 +230,7 @@ namespace PetitParis.EditorTools
             Wire(parts.scaleRig, ("config", config), ("xrOrigin", origin), ("trackingSpace", space), ("body", body), ("eyeCamera", cam));
             parts.scaleRig.ApplyScaleSettings();
             Wire(parts.reader, ("actions", inputAsset));
-            Wire(desktopLook, ("rig", parts.scaleRig), ("input", parts.reader));
+            Wire(desktopLook, ("rig", parts.scaleRig), ("input", parts.reader), ("calibrator", parts.calibrator));
             Wire(parts.calibrator, ("rig", parts.scaleRig), ("input", parts.reader), ("fader", parts.fader));
             Wire(parts.locomotion, ("m_Mediator", mediator), ("rig", parts.scaleRig), ("input", parts.reader), ("comfort", comfortSettings),
                 ("dash", parts.dash), ("jump", parts.jump), ("crouch", parts.crouch));

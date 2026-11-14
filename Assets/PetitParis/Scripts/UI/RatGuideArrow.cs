@@ -3,7 +3,7 @@ using UnityEngine;
 namespace PetitParis
 {
     /// <summary>
-    /// 내비게이션처럼 "지금 가야 할 방향"을 쥐 발 앞 바닥의 화살표로 보여준다.
+    /// 내비게이션처럼 "지금 가야 할 방향"을 화살표로 보여준다. 화살표는 항상 바라보는 방향 앞에 떠 있고, 머리(화살촉)가 가야 할 쪽을 가리킨다.
     ///
     /// - 레벨에 미리 정해 둔 안내 경로(route, 순서 있는 점들) 위에서 쥐와 가장 가까운 지점을 찾고,
     ///   그보다 lookAhead만큼 앞의 경로 지점을 가리킨다 → 벽을 뚫고 직선으로 가리키지 않는다.
@@ -27,7 +27,7 @@ namespace PetitParis
 
         [SerializeField] bool showArrow = true;
 
-        [Tooltip("쥐 앞 몇 m 지점에 화살표를 둘지 (0.26 = 체감 2.6m).")]
+        [Tooltip("바라보는 방향 앞 몇 m 지점에 화살표를 둘지 (0.26 = 체감 2.6m).")]
         [SerializeField, Range(0.05f, 0.5f)] float distanceAhead = 0.26f;
 
         [Tooltip("경로를 얼마나 앞서 가리킬지 (월드 m). 길수록 모퉁이를 미리 꺾는다.")]
@@ -108,6 +108,13 @@ namespace PetitParis
             maxReached = Mathf.Max(maxReached, param);
             if (totalLength - param < hideNearEnd) { SetVisible(false); return; }
 
+            // 화살표 위치: 항상 "내가 보고 있는 수평 방향" 앞 → 어디를 보든 시야 안에 있다
+            Vector3 view = rig.EyeCamera != null ? Flat(rig.EyeCamera.transform.forward) : Vector3.zero;
+            if (view.sqrMagnitude < 1e-4f) view = Flat(rig.transform.forward);
+            float bob = Mathf.Sin(Time.time * 3f) * bobAmplitude;
+            Vector3 arrowPos = p + view.normalized * distanceAhead + Vector3.up * (hoverHeight + bob);
+
+            // 화살표 방향: 경로 위 다음 지점 (뒤에 있으면 뒤를 가리킴 → 돌아서라는 뜻)
             Vector3 target = PointAt(Mathf.Min(totalLength, param + lookAhead));
             Vector3 dir = Flat(target - p);
             if (dir.sqrMagnitude < 1e-6f) dir = Flat(PointAt(totalLength) - p);
@@ -116,11 +123,7 @@ namespace PetitParis
             Quaternion want = Quaternion.LookRotation(dir.normalized, Vector3.up);
             currentYaw = hasYaw ? Quaternion.RotateTowards(currentYaw, want, turnSpeed * Time.deltaTime) : want;
             hasYaw = true;
-
-            float bob = Mathf.Sin(Time.time * 3f) * bobAmplitude;
-            Vector3 forward = currentYaw * Vector3.forward;
-            arrow.SetPositionAndRotation(p + forward * distanceAhead + Vector3.up * (hoverHeight + bob),
-                currentYaw * Quaternion.Euler(-tiltDegrees, 0f, 0f));
+            arrow.SetPositionAndRotation(arrowPos, currentYaw * Quaternion.Euler(-tiltDegrees, 0f, 0f));
             SetVisible(true);
         }
 

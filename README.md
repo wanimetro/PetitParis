@@ -5,13 +5,13 @@
 
 | 항목 | 내용 |
 |---|---|
-| 엔진 | Unity 6000.3.9f1 (URP) |
-| XR | OpenXR + XR Interaction Toolkit 3.3.2 |
+| 엔진 | Unity 6000.6.9f1 (URP 17.6) |
+| XR | OpenXR + XR Interaction Toolkit 3.6.1 |
 | 기기 | Meta Quest 3 + Touch Plus 컨트롤러 (앉아서 플레이 가능) |
 | 상태 | 블록아웃 프로토타입. Unity 에디터·실기기 검증 전 |
 
 ## 시작하기
-1. Unity Hub에서 이 폴더를 Unity **6000.3.9f1**로 연다 (Android Build Support 모듈 필요).
+1. Unity Hub에서 이 폴더를 Unity **6000.6.9f1**로 연다 (Android Build Support 모듈 필요).
 2. `docs/README.md`의 "2. Unity에서 할 일" 순서대로 진행한다 (OpenXR 설정 → 메뉴 `PetitParis > 0, 3, 4`).
 3. Quest 3 빌드·설치 방법: `docs/README.md` 3-3.
 

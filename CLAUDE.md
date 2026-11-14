@@ -1,7 +1,7 @@
 # PETIT PARIS — Meta Quest 3 VR
 
 작은 쥐가 되어 파리 몽마르트르풍 골목을 지나 센강까지 가는 1인칭 VR 게임 (3~5분).
-Unity 6000.3.9f1, URP 17.3, XR Interaction Toolkit 3.3.2, Input System 1.18, OpenXR (Meta Quest Support).
+Unity 6000.6.9f1, URP 17.6, XR Interaction Toolkit 3.6.1, Input System 1.20.1, OpenXR (Meta Quest Support).
 
 - 개발 가이드·테스트·빌드 순서: `docs/README.md` (작업 전에 읽는다)
 - 1단계 설계(쥐 시점·캘리브레이션): `docs/STAGE1.md`
@@ -19,7 +19,7 @@ Unity 6000.3.9f1, URP 17.3, XR Interaction Toolkit 3.3.2, Input System 1.18, Ope
 
 ## 작업 규칙
 - Quest 3에 필요 없는 패키지는 추가하지 않는다 (Meta XR SDK 전체, XR Hands 등). 패키지 클래스는 설치된 버전의 API를 확인한 뒤 사용한다.
-  - 클라우드 세션에서는 Unity 패키지 서버가 막혀 있다. 대신 `https://github.com/needle-mirror/<패키지명>` 미러의 해당 버전 태그(예: `com.unity.xr.interaction.toolkit` 3.3.2)를 shallow clone해서 소스로 확인한다. 기억에 의존해 API 이름을 쓰지 않는다.
+  - 클라우드 세션에서는 Unity 패키지 서버가 막혀 있다. 대신 `https://github.com/needle-mirror/<패키지명>` 미러의 해당 버전 태그(예: `com.unity.xr.interaction.toolkit` 3.6.1)를 shallow clone해서 소스로 확인한다. 기억에 의존해 API 이름을 쓰지 않는다.
 - 화면 텍스트는 한국어. 문장은 `PetitParisText`에 const로 추가한다 (한글 폰트 글자 사전 채우기에 쓰임). 폰트는 나눔고딕(OFL).
 - 에셋·음원·이미지는 무료이면서 라이선스가 확인된 것만 쓰고 `docs/CREDITS.md`에 기록한다. 후보는 먼저 사용자에게 알린다.
 - 로컬 세션에서는 Unity MCP로 직접 Play·스크린샷·Console을 확인하며 작업한다. 화면을 확인하지 않은 변경은 "미검증"으로 표시한다.

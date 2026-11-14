@@ -207,7 +207,7 @@ namespace PetitParis.EditorTools
                 string v = Version(id);
                 report.Check(v != null, $"{id} {v}", $"{id} 미설치", warnOnly: id == "com.unity.xr.management" || id == "com.unity.xr.openxr");
             }
-            report.Check(Version("com.unity.xr.interaction.toolkit") == "3.3.2", "XRI 3.3.2 (코드 작성 기준 버전)", $"XRI 버전이 {Version("com.unity.xr.interaction.toolkit")}입니다. 코드는 3.3.2 기준으로 작성되었습니다.", warnOnly: true);
+            report.Check(Version("com.unity.xr.interaction.toolkit") == "3.6.1", "XRI 3.6.1 (프로젝트 기준 버전)", $"XRI 버전이 {Version("com.unity.xr.interaction.toolkit")}입니다. 프로젝트 기준 버전은 3.6.1입니다.", warnOnly: true);
             report.Check(Object.FindObjectsByType<RatLocomotionController>(FindObjectsInactive.Include).Length <= 1, "이동 컨트롤러 중복 없음", "RatLocomotionController가 여러 개입니다.");
 
             report.Check(EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android, "빌드 타깃 Android",

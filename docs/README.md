@@ -171,7 +171,8 @@ z 23.8   목적지: 골목 출구, 난간 틈으로 센강 → 완료 화면 →
 - 실제 Unity 컴파일 결과는 사용자가 확인해야 한다.
 
 ### ② 설치 패키지 버전 ↔ 코드 API
-설치된 버전 (`Packages/packages-lock.json`): XRI **3.3.2**, XR Core Utils **2.5.3**, Input System **1.18.0**, URP **17.3.0**, Unity **6000.3.9f1**.
+설치된 버전 (`Packages/packages-lock.json`): XRI **3.6.1**, XR Core Utils **2.6.0**, Input System **1.20.1**, URP **17.6.0**, Unity **6000.6.9f1**.
+- 2026-11-14: Unity 6000.3.9f1 → 6000.6.9f1로 올리면서 위 패키지도 함께 올라갔다 (이전: XRI 3.3.2, XR Core Utils 2.5.3, Input System 1.18.0, URP 17.3.0). 아래 표의 API 확인은 이전 버전 기준이므로, 새 버전에서는 **미검증**이다. `Assets/Samples/XR Interaction Toolkit/3.3.2` 샘플도 아직 3.3.2 그대로다.
 OpenXR과 XR Management는 아직 설치되지 않았고, 코드는 이 둘에 의존하지 않는다.
 
 | API | 확인 방법 | 상태 |

@@ -44,7 +44,7 @@
 
 ### 3-0. 준비
 1. GitHub Desktop: PetitParis 레포를 Clone하고 **Fetch origin → Pull**
-2. Unity Hub → Installs → 6000.3.9f1 → ⚙ → **Add modules** → **Android Build Support**(하위 OpenJDK, Android SDK & NDK Tools 포함) 설치. 이미 있으면 건너뛴다.
+2. Unity Hub → Installs → 6000.6.9f1 → ⚙ → **Add modules** → **Android Build Support**(하위 OpenJDK, Android SDK & NDK Tools 포함) 설치. 이미 있으면 건너뛴다.
 3. 프로젝트를 연다 → 컴파일이 끝나면 **Console에 빨간 에러가 없는지** 확인한다. 에러가 있으면 전문을 복사해서 알려 달라.
 
 ### 3-1. XR Plug-in Management + OpenXR (패키지는 여기서 설치)

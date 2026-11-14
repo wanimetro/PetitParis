@@ -9,6 +9,8 @@ namespace PetitParis
     /// - 떨어질 자리는 쥐가 곧 있을 위치 (현재 위치 + 이동 방향 × 예측 시간)
     /// - dropFromEdge를 켜면 차양 앞 끝(edgeA~edgeB 선)에서만 굴러떨어진다: 쥐가 차양 끝 가까이 올 때만,
     ///   차양 끝 바로 앞 바닥에 떨어진다 → 차양 밑은 안전하고, 차양 끝 앞 줄을 건널 때가 위험
+    /// - randomAlongEdge까지 켜면 쥐를 노리지 않고 차양 끝 아무 곳에서나 하나씩, 무작위 간격(randomInterval)으로
+    ///   쥐가 구역 안에 있는 동안 계속 떨어진다 (방문당 개수 제한 없음 → 차양 밑에서 기다려 소진시킬 수 없다)
     /// - 떨어지기 전에 바닥 그림자가 점점 커지고 진해진다 (warningTime초) → 질주로 피한다
     /// - 맞았는지는 떨어지는 매 프레임 직접 검사한다 (빠르게 떨어져도 놓치지 않음) → 맞으면 "바게트에 맞았어요!" + 리스폰
     ///   간발의 차로 피하면 "아슬아슬!" 메시지. 바닥에 닿으면 한 번 튀었다가 눕고, 누운 바게트는 위험하지 않다
@@ -56,8 +58,13 @@ namespace PetitParis
         [Tooltip("차양 끝에서 바깥쪽(거리 쪽) 방향. 바게트는 끝보다 조금 바깥에 떨어진다.")]
         [SerializeField] Vector3 edgeOutward = Vector3.right;
         [SerializeField] Vector2 edgeLandingOffset = new Vector2(0.04f, 0.14f);
-        [Tooltip("쥐가 차양 끝 선에서 이 거리(월드 m) 안에 있을 때만 떨어뜨린다.")]
+        [Tooltip("쥐가 차양 끝 선에서 이 거리(월드 m) 안에 있을 때만 떨어뜨린다. (randomAlongEdge면 쓰지 않음)")]
         [SerializeField, Range(0.1f, 2f)] float edgeTriggerDistance = 0.8f;
+        [Tooltip("켜면 쥐를 노리지 않고 차양 끝 아무 곳에서나, 한 번에 하나씩, 무작위 간격으로 떨어진다. " +
+                 "쥐가 구역 안에 있는 동안 계속 떨어지고 dropsPerVisit 제한은 쓰지 않는다 (차양 밑에서 기다려 다 떨어뜨리는 꼼수 방지).")]
+        [SerializeField] bool randomAlongEdge;
+        [Tooltip("randomAlongEdge일 때 다음 바게트까지 간격 (초, 최소~최대).")]
+        [SerializeField] Vector2 randomInterval = new Vector2(2.5f, 5f);
 
         [Header("보너스 부스러기")]
         [SerializeField] CrumbPickup crumbTemplate;
@@ -165,8 +172,17 @@ namespace PetitParis
                              && RatSafeZone.ColliderContains(zone, danger.BodyCenter)
                              && (respawn == null || (!respawn.IsRespawning && !respawn.IsInvulnerable))
                              && !danger.IsSafe
-                             && (!dropFromEdge || DistanceToEdge(rig.transform.position) <= edgeTriggerDistance)
+                             && (!dropFromEdge || RandomMode || DistanceToEdge(rig.transform.position) <= edgeTriggerDistance)
                              && (gameFlow == null || gameFlow.CurrentPhase != PetitParisGameFlow.Phase.Completed);
+            if (RandomMode)
+            {
+                // 차양 끝 무작위 위치에서 하나씩. 들어오자마자 떨어지지 않게 첫 간격을 조금 둔다
+                if (ratInZone && !wasInZone) nextDrop = Mathf.Max(nextDrop, Time.time + Random.Range(0.5f, Mathf.Max(0.5f, randomInterval.x)));
+                wasInZone = ratInZone;
+                if (ratInZone && Time.time >= nextDrop && !AnyAirborne()) TryDrop();
+                for (int i = 0; i < states.Length; i++) Tick(i, dt);
+                return;
+            }
             // 한 번 들어올 때 dropsPerVisit개까지만. 나갔다가 revisitCooldown 뒤 다시 들어오면 다시 시작
             if (!ratInZone && wasInZone) outsideSince = Time.time;
             if (ratInZone && !wasInZone && Time.time - outsideSince >= revisitCooldown)
@@ -204,8 +220,9 @@ namespace PetitParis
                 yaws[i] = Random.Range(0f, 360f);
                 if (dropFromEdge)
                 {
-                    // 차양 끝 선 위에서 쥐와 가장 가까운 지점 바로 바깥에 떨어진다. 바게트는 차양 끝과 나란히 눕는다
-                    Vector3 onEdge = ClosestOnEdge(target);
+                    // 차양 끝 선 위(무작위 모드면 아무 곳, 아니면 쥐와 가장 가까운 지점) 바로 바깥에 떨어진다.
+                    // 바게트는 차양 끝과 나란히 눕는다
+                    Vector3 onEdge = RandomMode ? Vector3.Lerp(edgeA, edgeB, Random.value) : ClosestOnEdge(target);
                     Vector3 outward = new Vector3(edgeOutward.x, 0f, edgeOutward.z).normalized;
                     Vector3 landing = onEdge + outward * Random.Range(edgeLandingOffset.x, edgeLandingOffset.y);
                     heights[i] = Mathf.Max(0.3f, onEdge.y - target.y);
@@ -216,7 +233,7 @@ namespace PetitParis
                 targets[i] = target;
                 states[i] = ItemState.Warning;
                 timers[i] = 0f;
-                nextDrop = Time.time + interval;
+                nextDrop = Time.time + (RandomMode ? Random.Range(randomInterval.x, Mathf.Max(randomInterval.x, randomInterval.y)) : interval);
                 dropsThisVisit++;
                 if (!messageShown && gameFlow != null)
                 {
@@ -338,6 +355,15 @@ namespace PetitParis
         {
             Vector3 c = ClosestOnEdge(p);
             return new Vector2(p.x - c.x, p.z - c.z).magnitude;
+        }
+
+        bool RandomMode => dropFromEdge && randomAlongEdge;
+
+        bool AnyAirborne()
+        {
+            foreach (var st in states)
+                if (st == ItemState.Warning || st == ItemState.Falling) return true;
+            return false;
         }
 
         bool AllIdleOrLying()

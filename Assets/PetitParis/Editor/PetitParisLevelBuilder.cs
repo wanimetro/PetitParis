@@ -157,6 +157,8 @@ namespace PetitParis.EditorTools
             var baguettes = PetitParisGameplayKit.FallingBaguettes("FallingBaguettes_Bakery", events, -2.95f, 0.7f, 7.4f, 12.9f, 2.6f, 3, m);
             var bso = new SerializedObject(baguettes);
             SetBool(bso, "dropFromEdge", true);
+            SetBool(bso, "randomAlongEdge", true); // 쥐를 노리지 않고 차양 끝 무작위 위치에서 하나씩
+            bso.FindProperty("randomInterval").vector2Value = new Vector2(2.5f, 5f);
             bso.FindProperty("edgeA").vector3Value = new Vector3(-1.5f, 2.75f, 7.55f);
             bso.FindProperty("edgeB").vector3Value = new Vector3(-1.5f, 2.75f, 12.45f);
             bso.FindProperty("edgeOutward").vector3Value = Vector3.right;

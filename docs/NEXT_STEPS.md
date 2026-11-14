@@ -16,13 +16,17 @@
    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
 3. Unity로 PetitParis 프로젝트를 연다. `com.coplaydev.unity-mcp` 패키지는 이미 manifest에 들어 있다.
-4. Unity 메뉴 **Window → MCP for Unity → Configure All Detected Clients**를 실행한다 (Claude Code 등록).
+4. Unity 메뉴 **Window → MCP for Unity → Toggle MCP Window** (Ctrl+Shift+M)를 연다.
+   - Python이나 uv가 없다고 나오면 **Window → MCP for Unity → Local Setup Window**에서 **Install UV Automatically**를 먼저 실행한다.
+   - MCP 창의 **Client Configuration**에서 Client를 **Claude Code**로 고르고 **Configure**를 누른다 (또는 **Configure All Detected Clients**). 내부에서 `claude mcp add`를 실행한다.
+   - "Claude CLI Path"를 못 찾으면 PowerShell에서 `where.exe claude`로 경로를 확인해 **Browse**로 지정한다.
+   - **Connect** 버튼이 있으면 눌러 Unity 쪽 연결을 켠다.
 5. PowerShell에서 프로젝트 폴더로 이동해 Claude Code를 실행한다.
    ```powershell
    cd "<PetitParis 폴더 경로>"
    claude
    ```
-6. Claude Code에서 `/mcp`를 입력해 Unity MCP가 connected인지 확인한다.
+6. PowerShell에서 `claude mcp list`에 UnityMCP가 보이는지, Claude Code 안에서 `/mcp`를 입력해 connected인지 확인한다.
 7. 첫 요청 예시:
    > "docs/NEXT_STEPS.md를 읽고, PetitParisVR 씬을 Play해서 스크린샷과 Console을 확인한 뒤 '알려진 문제'부터 고쳐줘."
 

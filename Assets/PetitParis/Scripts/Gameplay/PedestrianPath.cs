@@ -80,6 +80,13 @@ namespace PetitParis
         [Tooltip("3D 소리가 들리는 최대 거리 (월드 m).")]
         [SerializeField, Range(1f, 30f)] float audioMaxDistance = 10f;
 
+        [Header("추격 (PedestrianAwareness, ChaseEvent가 켠다)")]
+        [Tooltip("추격 중 발을 쥐 쪽으로 최대 얼마나 내딛는지 (월드 m). 클수록 '밟으러 오는' 느낌.")]
+        [SerializeField, Range(0f, 0.35f)] float stompReach = 0.2f;
+
+        [Tooltip("추격 중 이 거리(월드 m)보다 가까우면 멈춰 서서 제자리에서 쿵쿵 밟는다.")]
+        [SerializeField, Range(0.05f, 0.6f)] float stompStopDistance = 0.22f;
+
         struct Foot
         {
             public Transform transform;
@@ -105,8 +112,93 @@ namespace PetitParis
         float stepDuration = 0.5f;
         bool valid;
 
+        // 추격
+        Transform chaseTarget;
+        float chaseSpeed;
+        float chaseTurnSpeed;
+        Bounds chaseArea;
+        bool hasChaseArea;
+        Transform lookTarget;
+
         public bool IsMoving => currentSpeed > 0.05f;
         public float WalkSpeed { get => walkSpeed; set => walkSpeed = Mathf.Max(0.05f, value); }
+        public bool IsChasing => chaseTarget != null;
+        /// <summary>몸 중심의 바닥 위치 (월드).</summary>
+        public Vector3 GroundPosition => new Vector3(position.x, groundY, position.z);
+        public Vector3 Forward => heading * Vector3.forward;
+        public Transform Body => body;
+        /// <summary>경로 Waypoint 전체를 감싸는 영역 (추격 범위 계산용).</summary>
+        public Bounds PathBounds
+        {
+            get
+            {
+                var b = new Bounds(transform.position, Vector3.zero);
+                bool first = true;
+                if (waypoints != null)
+                    foreach (var w in waypoints)
+                    {
+                        if (w == null) continue;
+                        if (first) { b = new Bounds(w.position, Vector3.zero); first = false; }
+                        else b.Encapsulate(w.position);
+                    }
+                return b;
+            }
+        }
+
+        /// <summary>
+        /// 목표(쥐)를 향해 걸어가며 발을 그쪽으로 내딛는다. area가 있으면 목표 위치를 그 안으로 제한한다 (벽·가게 안으로 들어가지 않게).
+        /// turnDegreesPerSecond가 작을수록 옆으로 피하기 쉽다.
+        /// </summary>
+        public void BeginChase(Transform target, float speed, float turnDegreesPerSecond, Bounds? area = null)
+        {
+            chaseTarget = target;
+            chaseSpeed = Mathf.Max(0.05f, speed);
+            chaseTurnSpeed = Mathf.Max(10f, turnDegreesPerSecond);
+            hasChaseArea = area.HasValue;
+            if (area.HasValue) chaseArea = area.Value;
+            pauseTimer = 0f;
+            lookTarget = null;
+        }
+
+        /// <summary>추격을 끝내고 원래 경로로 돌아간다 (가장 가까운 Waypoint부터).</summary>
+        public void EndChase()
+        {
+            if (chaseTarget == null) return;
+            chaseTarget = null;
+            targetIndex = NearestWaypointIndex();
+        }
+
+        /// <summary>잠시 멈춰 서서 target 쪽을 바라본다 (쥐를 발견한 순간 등).</summary>
+        public void PauseAndLook(float seconds, Transform target)
+        {
+            pauseTimer = Mathf.Max(pauseTimer, seconds);
+            lookTarget = target;
+        }
+
+        int NearestWaypointIndex()
+        {
+            int best = targetIndex;
+            float bestD = float.MaxValue;
+            for (int i = 0; i < waypoints.Length; i++)
+            {
+                if (waypoints[i] == null) continue;
+                float d = Flat(waypoints[i].position - position).sqrMagnitude;
+                if (d < bestD) { bestD = d; best = i; }
+            }
+            return best;
+        }
+
+        Vector3 ChaseGoal()
+        {
+            Vector3 g = chaseTarget.position;
+            if (hasChaseArea)
+            {
+                g.x = Mathf.Clamp(g.x, chaseArea.min.x, chaseArea.max.x);
+                g.z = Mathf.Clamp(g.z, chaseArea.min.z, chaseArea.max.z);
+            }
+            g.y = groundY;
+            return g;
+        }
 
         /// <summary>발이 땅에 닿을 때 (착지 위치).</summary>
         public event Action<Vector3> FootLanded;
@@ -161,6 +253,30 @@ namespace PetitParis
             {
                 pauseTimer -= dt;
                 currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, walkSpeed * 3f * dt);
+                if (lookTarget != null)
+                {
+                    Vector3 look = Flat(lookTarget.position - position);
+                    if (look.sqrMagnitude > 1e-6f)
+                        heading = Quaternion.RotateTowards(heading, Quaternion.LookRotation(look.normalized, Vector3.up), turnSpeed * dt);
+                }
+                if (pauseTimer <= 0f) lookTarget = null;
+            }
+            else if (chaseTarget != null)
+            {
+                // 추격: 몸이 바라보는 방향으로만 걷고 천천히 돈다 → 옆으로 질주하면 따돌릴 수 있다
+                Vector3 to = Flat(ChaseGoal() - position);
+                float distance = to.magnitude;
+                if (distance > 1e-4f)
+                    heading = Quaternion.RotateTowards(heading, Quaternion.LookRotation(to / distance, Vector3.up), chaseTurnSpeed * dt);
+                float facing = distance > 1e-4f ? Vector3.Dot(heading * Vector3.forward, to / distance) : 1f;
+                float want = distance > stompStopDistance ? chaseSpeed * Mathf.Clamp01(facing * 1.2f) : 0f;
+                currentSpeed = Mathf.MoveTowards(currentSpeed, want, chaseSpeed * 3f * dt);
+                position += heading * Vector3.forward * (currentSpeed * dt);
+                if (hasChaseArea)
+                {
+                    position.x = Mathf.Clamp(position.x, chaseArea.min.x, chaseArea.max.x);
+                    position.z = Mathf.Clamp(position.z, chaseArea.min.z, chaseArea.max.z);
+                }
             }
             else
             {
@@ -205,7 +321,8 @@ namespace PetitParis
             if (!stepping)
             {
                 bool moving = currentSpeed > 0.05f;
-                if (!moving && !FeetNeedSettling()) return;
+                bool stomping = chaseTarget != null && Flat(chaseTarget.position - position).magnitude < stompStopDistance + stompReach + 0.15f;
+                if (!moving && !stomping && !FeetNeedSettling()) return;
                 BeginStep();
             }
 
@@ -235,7 +352,9 @@ namespace PetitParis
         {
             stepping = true;
             stepTimer = 0f;
-            stepDuration = Mathf.Clamp(strideLength / Mathf.Max(0.3f, currentSpeed), 0.3f, 1f);
+            stepDuration = chaseTarget != null
+                ? Mathf.Clamp(strideLength / Mathf.Max(0.3f, Mathf.Max(currentSpeed, chaseSpeed)), 0.3f, 0.7f)
+                : Mathf.Clamp(strideLength / Mathf.Max(0.3f, currentSpeed), 0.3f, 1f);
             ref Foot foot = ref swingLeft ? ref left : ref right;
             foot.swingFrom = foot.plantPosition;
             foot.swingFromRotation = foot.plantRotation;
@@ -249,6 +368,12 @@ namespace PetitParis
             Vector3 predicted = position + forward * currentSpeed * remainingTime;
             Vector3 lead = currentSpeed > 0.05f ? forward * strideLength * 0.3f : Vector3.zero;
             Vector3 p = predicted + side + lead;
+            if (chaseTarget != null && stompReach > 0f)
+            {
+                // 추격 중: 발을 쥐가 있는 쪽으로 내딛는다 (최대 stompReach)
+                Vector3 toRat = Flat(chaseTarget.position - p);
+                p += Vector3.ClampMagnitude(toRat, stompReach);
+            }
             p.y = groundY + footCenterHeight;
             return p;
         }

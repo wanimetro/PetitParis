@@ -27,6 +27,7 @@ namespace PetitParis
         [SerializeField] ScreenFader fader;
         [SerializeField] RatObjectiveMarker objectiveMarker;
         [SerializeField] AudioSource sfx;
+        [SerializeField] CrumbCollection crumbs;
 
         [Header("목적지")]
         [Tooltip("목적지 구역 (Trigger Collider). 쥐 몸 중심이 들어오면 완료.")]
@@ -73,6 +74,7 @@ namespace PetitParis
                 if (fader == null) fader = rig.GetComponentInChildren<ScreenFader>(true);
             }
             if (checkpoints == null) checkpoints = FindAnyObjectByType<CheckpointManager>();
+            if (crumbs == null) crumbs = FindAnyObjectByType<CrumbCollection>();
             if (sfx != null) PetitParisAudio.Configure2D(sfx);
             if (goalVolume == null) Debug.LogError("[PetitParis] 목적지(goalVolume)가 연결되지 않았습니다.", this);
         }
@@ -175,10 +177,21 @@ namespace PetitParis
             {
                 int total = Mathf.FloorToInt(ElapsedTime);
                 int deaths = respawn != null ? respawn.DeathCount : 0;
+                string scoreLines = "";
+                if (crumbs != null)
+                {
+                    int stars = crumbs.Stars(true);
+                    scoreLines =
+                        $"<size=170%><color=#ffd040>{CrumbCollection.StarString(stars)}</color></size>\n" +
+                        $"{PetitParisText.CompleteScore}  {crumbs.Score} / {crumbs.TotalPoints}\n" +
+                        $"{PetitParisText.CompleteGolden}  {crumbs.GoldenCount} / {crumbs.GoldenTotal}\n";
+                }
                 completeText.text =
                     $"<size=150%><b>{PetitParisText.CompleteTitle}</b></size>\n{PetitParisText.CompleteBody}\n\n" +
+                    scoreLines +
                     $"{PetitParisText.CompleteTime}  {total / 60}:{total % 60:00}\n" +
                     $"{PetitParisText.CompleteDeaths}  {deaths}\n\n" +
+                    (crumbs != null ? $"<size=70%>{PetitParisText.CompleteStarRule}</size>\n" : "") +
                     $"{PetitParisText.CompleteRestart}";
             }
         }

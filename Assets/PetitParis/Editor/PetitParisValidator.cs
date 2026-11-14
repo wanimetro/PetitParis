@@ -184,7 +184,35 @@ namespace PetitParis.EditorTools
                     foreach (var f in new[] { "goalVolume", "introPanel", "completePanel", "completeText", "objectiveMarker" })
                         report.Check(so.FindProperty(f)?.objectReferenceValue != null, $"GameFlow.{f} 연결", $"GameFlow.{f}가 비어 있습니다.");
                 }
-                report.Check(walkers.Length == 2, "보행자 2명", $"보행자가 {walkers.Length}명입니다 (기획: 2명).", warnOnly: true);
+                report.Check(walkers.Length == 4, "보행자 4명 (웨이터, 빵집 셰프, 빗자루 웨이터, 주방 셰프)", $"보행자가 {walkers.Length}명입니다 (기획: 4명).", warnOnly: true);
+
+                // 재미 요소
+                var aware = Object.FindObjectsByType<PedestrianAwareness>(FindObjectsInactive.Include);
+                report.Check(aware.Length == walkers.Length, $"쥐를 알아채는 보행자 {aware.Length}명", $"PedestrianAwareness가 {aware.Length}개입니다 (보행자 {walkers.Length}명).", warnOnly: true);
+                foreach (var a in aware)
+                    report.Check(new SerializedObject(a).FindProperty("bubble")?.objectReferenceValue != null, $"{a.name} 말풍선 연결", $"{a.name}의 말풍선(bubble)이 비어 있습니다.", warnOnly: true);
+                var crumbs = Object.FindObjectsByType<CrumbPickup>(FindObjectsInactive.Exclude);
+                int golden = crumbs.Count(c => c.IsGolden);
+                report.Check(crumbs.Length > 0, $"빵 부스러기 {crumbs.Length}개 (총점 {crumbs.Sum(c => c.Points)}, 황금 크루아상 {golden}개)", "빵 부스러기(CrumbPickup)가 없습니다.", warnOnly: true);
+                var collection = Object.FindAnyObjectByType<CrumbCollection>();
+                if (report.Check(collection != null, "CrumbCollection(점수·별점) 있음", "CrumbCollection이 없습니다."))
+                {
+                    var cso = new SerializedObject(collection);
+                    foreach (var f in new[] { "rig", "danger", "respawn", "checkpoints", "gameFlow", "popup" })
+                        report.Check(cso.FindProperty(f)?.objectReferenceValue != null, $"CrumbCollection.{f} 연결", $"CrumbCollection.{f}가 비어 있습니다.", warnOnly: true);
+                }
+                var hud = Object.FindAnyObjectByType<RatHud>();
+                report.Check(hud != null && new SerializedObject(hud).FindProperty("scoreText")?.objectReferenceValue != null, "시야 안내판(RatHud) 연결", "RatHud가 없거나 글자가 연결되지 않았습니다.", warnOnly: true);
+                var chase = Object.FindAnyObjectByType<ChaseEvent>();
+                report.Check(chase != null && new SerializedObject(chase).FindProperty("chaser")?.objectReferenceValue != null, "빗자루 웨이터 추격 이벤트 연결", "ChaseEvent가 없거나 chaser가 비어 있습니다.", warnOnly: true);
+                foreach (var f in Object.FindObjectsByType<FallingHazard>(FindObjectsInactive.Include))
+                {
+                    var fso = new SerializedObject(f);
+                    report.Check(fso.FindProperty("items")?.arraySize > 0 && fso.FindProperty("zone")?.objectReferenceValue != null, $"{f.name}: 떨어질 물건·구역 연결", $"{f.name}의 items 또는 zone이 비어 있습니다.", warnOnly: true);
+                }
+                report.Info($"비둘기 무리 {Object.FindObjectsByType<PigeonFlock>(FindObjectsInactive.Include).Length}개, 이야기 구역 {Object.FindObjectsByType<RatStoryTrigger>(FindObjectsInactive.Include).Length}개");
+                var goal = flow != null ? new SerializedObject(flow).FindProperty("goalVolume")?.objectReferenceValue as Collider : null;
+                report.Check(goal != null && goal.bounds.min.y > 0.5f, "목적지 = 주방 식탁 위 치즈", "목적지(goalVolume)가 식탁 위(높이 0.9m)가 아닙니다.", warnOnly: true);
 
                 var guide = Object.FindAnyObjectByType<RatGuideArrow>();
                 if (report.Check(guide != null, "내비게이션 화살표(RatGuideArrow) 있음", "RatGuideArrow가 없습니다.", warnOnly: true))

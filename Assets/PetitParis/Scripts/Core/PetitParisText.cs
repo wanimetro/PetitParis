@@ -12,7 +12,7 @@ namespace PetitParis
     {
         public const string Title = "PETIT PARIS";
         public const string IntroBody =
-            "작은 쥐가 되어 센강까지 가 보세요\n\n" +
+            "작은 쥐가 되어 비스트로 주방의 치즈를 찾아가세요\n빵 부스러기를 모으고, 사람 눈에 띄지 마세요!\n\n" +
             "왼쪽 스틱  이동\n" +
             "오른쪽 스틱  30도 회전\n" +
             "오른쪽 트리거  순간 질주\n" +
@@ -26,6 +26,14 @@ namespace PetitParis
         public const string HintBakery = "발 사이를 질주로 빠져나가요\n오른쪽 트리거";
         public const string HintBike = "자전거 소리를 듣고 건너요";
         public const string HintGoal = "센강 쪽 출구";
+        public const string HintSeine = "센강이다!\n…어디선가 치즈 냄새가?";
+        public const string HintKitchenDoor = "비스트로 뒷문\n안으로 들어가요";
+        public const string HintKitchenClimb = "널빤지를 타고\n식탁 위 치즈까지!";
+        public const string HintPallet = "팔레트 밑에 숨어요!\n웨이터가 지나갈 때까지";
+        public const string HintCrumbs = "빵 부스러기를 모아요\n황금 크루아상은 3개!";
+        public const string HintCrouchStealth = "B로 웅크리면\n사람 눈에 덜 띄어요";
+        public const string SignBistro = "BISTROT\nLE PETIT FROMAGE";
+        public const string SignKitchen = "CUISINE";
         public const string SignCafe = "카페";
         public const string SignBakery = "빵집";
         public const string SignCafeLatin = "CAFÉ";
@@ -47,20 +55,43 @@ namespace PetitParis
         public const string StatusCannotStand = "좁아서 일어설 수 없어요";
         public const string StatusCheckpoint = "체크포인트";
         public const string StatusRespawning = "다시 시작";
+        public const string StatusCrumbs = "빵";
+        public const string StatusGolden = "황금";
+        public const string StatusSpotted = "들켰다! 숨어요!";
 
         public const string MessageCheckpoint = "체크포인트 도착!";
         public const string MessageHidden = "잘 숨었어요! 발걸음이 지나가길 기다려요";
         public const string MessageDied = "밟힐 뻔했어요! 체크포인트로 돌아갑니다";
         public const string MessageFell = "떨어졌어요! 체크포인트로 돌아갑니다";
+        public const string MessageCrumbsKept = "모은 빵 부스러기를 지켰어요!";
+        public const string MessageCrumbsLostFormat = "빵 부스러기 {0}개를 떨어뜨렸어요";
+        public const string MessageGolden = "황금 크루아상!";
+        public const string MessageSpotted = "사람에게 들켰어요! 숨어요!";
+        public const string MessageEscaped = "휴, 따돌렸어요!";
+        public const string MessageChase = "웨이터가 빗자루를 들고 쫓아와요! 숨을 곳으로!";
+        public const string MessageBaguette = "위에서 바게트가 떨어져요! 그림자를 피해요!";
+        public const string MessageKitchen = "주방이다! 요리사 발밑을 조심해요";
+        public const string MessageSeine = "센강이 보여요! …어디선가 치즈 냄새가 나요";
+
+        public const string ShoutNotice = "!";
+        public const string ShoutRat = "앗, 쥐다!";
+        public const string ShoutLost = "어디 갔지?";
+        public const string ShoutChef = "내 주방에 쥐라니!";
+        public const string ShoutWaiter = "저리 가!";
 
         public const string CompleteTitle = "도착!";
-        public const string CompleteBody = "센강이 보여요. 작은 모험 성공!";
+        public const string CompleteBody = "치즈를 찾았어요! 작은 모험 성공!";
+        public const string CompleteScore = "빵 부스러기";
+        public const string CompleteGolden = "황금 크루아상";
+        public const string CompleteStarRule = "★ 도착  ★ 부스러기 60% 이상  ★ 황금 크루아상 3개";
+        public const string StarFull = "★";
+        public const string StarEmpty = "☆";
         public const string CompleteTime = "걸린 시간";
         public const string CompleteDeaths = "다시 시작한 횟수";
         public const string CompleteRestart = "A 버튼  처음부터 다시";
 
         public const string Seconds = "초";
-        public const string Extra = "0123456789:./!?·,()+-%  분초회";
+        public const string Extra = "0123456789:./!?·,()+-%  분초회개점…★☆";
 
         /// <summary>위 모든 문장의 글자를 합친다 (폰트 에셋 사전 채우기용).</summary>
         public static string AllCharacters()

@@ -20,6 +20,7 @@ namespace PetitParis
         [SerializeField] RatCrouchController crouch;
         [SerializeField] RatRespawn respawn;
         [SerializeField] RatLocomotionController locomotion;
+        [SerializeField] CrumbCollection crumbs;
         [SerializeField, Range(0.05f, 1f)] float refreshInterval = 0.15f;
 
         readonly StringBuilder sb = new StringBuilder(256);
@@ -30,6 +31,7 @@ namespace PetitParis
             if (text == null) text = GetComponent<TMP_Text>();
             if (gameFlow == null) gameFlow = FindAnyObjectByType<PetitParisGameFlow>();
             if (checkpoints == null) checkpoints = FindAnyObjectByType<CheckpointManager>();
+            if (crumbs == null) crumbs = FindAnyObjectByType<CrumbCollection>();
             if (danger == null) danger = GetComponentInParent<RatDangerDetector>();
             if (dash == null) dash = GetComponentInParent<RatScaleRig>()?.GetComponentInChildren<RatDashController>(true);
             if (crouch == null) crouch = GetComponentInParent<RatScaleRig>()?.GetComponentInChildren<RatCrouchController>(true);
@@ -51,6 +53,9 @@ namespace PetitParis
                 int t = Mathf.FloorToInt(gameFlow.ElapsedTime);
                 sb.Append("   ").Append(t / 60).Append(':').Append((t % 60).ToString("00"));
             }
+            if (crumbs != null)
+                sb.Append("   ").Append(PetitParisText.StatusCrumbs).Append(' ').Append(crumbs.Score)
+                  .Append("  ").Append(PetitParisText.StatusGolden).Append(' ').Append(crumbs.GoldenCount).Append('/').Append(crumbs.GoldenTotal);
             sb.Append('\n');
 
             // 2줄: 안전 / 위험

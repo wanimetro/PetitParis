@@ -48,10 +48,10 @@ namespace PetitParis
 
         [Header("이동 속도 (월드 m/s) — 다음 단계(이동)에서 사용")]
         [Tooltip("기본 걷기 속도. 0.15 = 사람 기준 체감 1.5 m/s (배율 0.1일 때).")]
-        [Range(0.01f, 1f)] public float walkSpeed = 0.15f;
+        [Range(0.01f, 1f)] public float walkSpeed = 0.2f;
 
         [Tooltip("순간 질주 속도. 짧은 구간에서만 사용.")]
-        [Range(0.01f, 2f)] public float dashSpeed = 0.45f;
+        [Range(0.01f, 2f)] public float dashSpeed = 0.55f;
 
         /// <summary>세상이 몇 배 크게 느껴지는지 (1 / trackingScale).</summary>
         public float Magnification => 1f / Mathf.Max(0.0001f, trackingScale);

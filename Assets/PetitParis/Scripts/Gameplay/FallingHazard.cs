@@ -4,10 +4,13 @@ namespace PetitParis
 {
     /// <summary>
     /// 위에서 물건(바게트, 양파 등)이 떨어지는 이벤트.
-    /// - 쥐가 zone(Trigger Collider) 안에 있으면 interval마다 하나씩 떨어뜨린다
+    /// - 쥐가 zone(Trigger Collider) 안에 있으면 interval마다 하나씩, 한 번 들어올 때 dropsPerVisit개까지만 떨어뜨린다
+    ///   (끝없이 쏟아지지 않게). 구역을 나갔다가 revisitCooldown초 뒤 다시 들어오면 다시 시작
     /// - 떨어질 자리는 쥐가 곧 있을 위치 (현재 위치 + 이동 방향 × 예측 시간)
     /// - 떨어지기 전에 바닥 그림자가 점점 커지고 진해진다 (warningTime초) → 질주로 피한다
-    /// - 떨어지는 동안에만 FootstepHazard가 켜진다. 바닥에 닿으면 꺼지고 잠시 누워 있다가 사라진다
+    /// - 맞았는지는 떨어지는 매 프레임 직접 검사한다 (빠르게 떨어져도 놓치지 않음) → 맞으면 "바게트에 맞았어요!" + 리스폰
+    ///   간발의 차로 피하면 "아슬아슬!" 메시지. 바닥에 닿으면 한 번 튀었다가 눕고, 누운 바게트는 위험하지 않다
+    /// - 쥐가 죽으면 떨어지던 바게트와 그림자를 모두 치운다 (리스폰한 쥐 위로 떨어지지 않게)
     /// - 떨어진 자리에 보너스 빵 부스러기가 생긴다 (crumbTemplate, 최대 maxBonusCrumbs개) → 위험과 보상
     /// 물건은 미리 만들어 둔 items(비활성 자식, 각각 FootstepHazard 포함)를 돌려 쓴다.
     /// 거리 단위는 월드 미터.
@@ -34,6 +37,14 @@ namespace PetitParis
         [SerializeField, Range(0.5f, 10f)] float lieTime = 3f;
         [SerializeField] Vector2 shadowSize = new Vector2(0.18f, 0.62f);
         [SerializeField] string firstMessage = PetitParisText.MessageBaguette;
+        [Tooltip("구역에 한 번 들어올 때 떨어지는 최대 개수.")]
+        [SerializeField, Range(1, 20)] int dropsPerVisit = 3;
+        [Tooltip("구역을 나간 뒤 이 시간(초)이 지나야 다시 떨어지기 시작한다.")]
+        [SerializeField, Range(0f, 60f)] float revisitCooldown = 8f;
+        [Tooltip("맞음 판정 여유 (월드 m). +면 더 엄격.")]
+        [SerializeField, Range(-0.02f, 0.03f)] float hitPadding = 0.005f;
+        [Tooltip("이 거리(월드 m) 안에 떨어졌는데 안 맞으면 '아슬아슬' 메시지.")]
+        [SerializeField, Range(0f, 0.5f)] float nearMissDistance = 0.16f;
 
         [Header("보너스 부스러기")]
         [SerializeField] CrumbPickup crumbTemplate;
@@ -54,6 +65,10 @@ namespace PetitParis
         Vector3 ratVelocity;
         int bonusSpawned;
         bool messageShown;
+        int dropsThisVisit;
+        float outsideSince = -999f;
+        bool wasInZone;
+        bool doneMessageShown;
 
         void Awake()
         {
@@ -82,6 +97,31 @@ namespace PetitParis
             if (crumbTemplate != null) crumbTemplate.gameObject.SetActive(false);
         }
 
+        void OnEnable()
+        {
+            if (respawn != null) respawn.Died += OnRatDied;
+        }
+
+        void OnDisable()
+        {
+            if (respawn != null) respawn.Died -= OnRatDied;
+        }
+
+        /// <summary>쥐가 죽으면 떨어지던 것을 모두 치우고, 다시 들어오면 처음부터.</summary>
+        void OnRatDied(string reason)
+        {
+            for (int i = 0; i < states.Length; i++)
+            {
+                if (states[i] == ItemState.Lying) continue; // 이미 누운 빵은 그대로
+                states[i] = ItemState.Idle;
+                if (items[i] != null) items[i].gameObject.SetActive(false);
+                SetShadow(i, Vector3.zero, 0f, 0f);
+            }
+            dropsThisVisit = 0;
+            doneMessageShown = false;
+            nextDrop = Time.time + interval;
+        }
+
         void Update()
         {
             float dt = Time.deltaTime;
@@ -99,7 +139,20 @@ namespace PetitParis
                              && (respawn == null || (!respawn.IsRespawning && !respawn.IsInvulnerable))
                              && !danger.IsSafe
                              && (gameFlow == null || gameFlow.CurrentPhase != PetitParisGameFlow.Phase.Completed);
-            if (ratInZone && Time.time >= nextDrop) TryDrop();
+            // 한 번 들어올 때 dropsPerVisit개까지만. 나갔다가 revisitCooldown 뒤 다시 들어오면 다시 시작
+            if (!ratInZone && wasInZone) outsideSince = Time.time;
+            if (ratInZone && !wasInZone && Time.time - outsideSince >= revisitCooldown)
+            {
+                dropsThisVisit = 0;
+                doneMessageShown = false;
+            }
+            wasInZone = ratInZone;
+            if (ratInZone && Time.time >= nextDrop && dropsThisVisit < dropsPerVisit) TryDrop();
+            if (dropsThisVisit >= dropsPerVisit && !doneMessageShown && AllIdleOrLying() && gameFlow != null)
+            {
+                gameFlow.PostMessage(PetitParisText.MessageBaguetteDone);
+                doneMessageShown = true;
+            }
 
             for (int i = 0; i < states.Length; i++) Tick(i, dt);
         }
@@ -124,6 +177,7 @@ namespace PetitParis
                 states[i] = ItemState.Warning;
                 timers[i] = 0f;
                 nextDrop = Time.time + interval;
+                dropsThisVisit++;
                 if (!messageShown && gameFlow != null)
                 {
                     gameFlow.PostMessage(firstMessage);
@@ -173,26 +227,48 @@ namespace PetitParis
                     // 떨어지며 눕는다
                     float k = Mathf.Clamp01(1f - (pos.y - restY) / dropHeight);
                     Quaternion rot = Quaternion.Euler(0f, yaws[i], Mathf.Lerp(70f, 90f, k));
-                    if (pos.y <= restY)
+                    bool landed = pos.y <= restY;
+                    if (landed) pos.y = restY;
+                    item.SetPositionAndRotation(pos, rot);
+
+                    // 맞았는지 매 프레임 직접 검사 (빠르게 떨어져 한 프레임에 쥐를 지나쳐도 놓치지 않게)
+                    float d = DistanceToRat(item);
+                    if (d <= 0f && CanKillRat())
                     {
-                        pos.y = restY;
+                        respawn.Kill("바게트");
+                        if (gameFlow != null) gameFlow.PostMessage(PetitParisText.MessageBaguetteHit); // 기본 "밟힐 뻔했어요" 대신
+                        break;
+                    }
+
+                    if (landed)
+                    {
                         states[i] = ItemState.Lying;
                         timers[i] = 0f;
+                        SetHazard(item, false); // 누운 바게트는 위험하지 않다 (판정은 위에서 직접 함)
                         if (audioSource != null)
                         {
                             audioSource.transform.position = targets[i];
                             audioSource.PlayOneShot(PetitParisAudio.Thud, 0.9f);
                         }
+                        if (d < nearMissDistance && gameFlow != null && (respawn == null || !respawn.IsRespawning))
+                            gameFlow.PostMessage(PetitParisText.MessageBaguetteNearMiss);
+                        SpawnBonusCrumb(targets[i]);
                         SpawnBonusCrumb(targets[i]);
                     }
-                    item.SetPositionAndRotation(pos, rot);
                     break;
                 }
 
                 case ItemState.Lying:
                 {
-                    // 닿은 직후 0.12초만 위험 (그 뒤는 그냥 누워 있는 빵)
-                    if (timers[i] > 0.12f) SetHazard(item, false);
+                    // 바닥에 닿으면 한 번 통 튀었다가 눕는다 (맞았다는 느낌)
+                    const float bounceTime = 0.3f;
+                    if (timers[i] <= bounceTime + dt)
+                    {
+                        float bt = Mathf.Clamp01(timers[i] / bounceTime);
+                        Vector3 lp = item.position;
+                        lp.y = targets[i].y + 0.035f + Mathf.Sin(bt * Mathf.PI) * 0.04f;
+                        item.position = lp;
+                    }
                     SetShadow(i, targets[i], 1f, Mathf.Lerp(0.5f, 0f, timers[i] / 0.4f));
                     if (timers[i] > lieTime)
                     {
@@ -209,11 +285,33 @@ namespace PetitParis
             }
         }
 
+        bool AllIdleOrLying()
+        {
+            foreach (var st in states)
+                if (st == ItemState.Warning || st == ItemState.Falling) return false;
+            return true;
+        }
+
+        bool CanKillRat() =>
+            respawn != null && !respawn.IsRespawning && !respawn.IsInvulnerable && (danger == null || !danger.IsSafe);
+
+        /// <summary>바게트(FootstepHazard 박스)와 쥐 몸 캡슐 사이 거리 (월드 m). 0 이하 = 맞음.</summary>
+        float DistanceToRat(Transform item)
+        {
+            var hazard = item.GetComponentInChildren<FootstepHazard>(true);
+            var body = rig != null ? rig.Body : null;
+            if (hazard == null || body == null) return float.MaxValue;
+            Vector3 up = body.transform.up;
+            Vector3 center = body.transform.TransformPoint(body.center);
+            float half = Mathf.Max(0f, body.height * 0.5f - body.radius);
+            return hazard.DistanceToCapsule(center + up * half, center - up * half, body.radius, out _) - hitPadding;
+        }
+
         void SpawnBonusCrumb(Vector3 at)
         {
             if (crumbTemplate == null || bonusSpawned >= maxBonusCrumbs) return;
             bonusSpawned++;
-            Vector2 off = Random.insideUnitCircle.normalized * 0.12f;
+            Vector2 off = Random.insideUnitCircle.normalized * Random.Range(0.08f, 0.16f);
             var crumb = Instantiate(crumbTemplate, at + new Vector3(off.x, 0.02f, off.y), Quaternion.identity, transform);
             crumb.IsBonus = true;
             crumb.gameObject.SetActive(true);

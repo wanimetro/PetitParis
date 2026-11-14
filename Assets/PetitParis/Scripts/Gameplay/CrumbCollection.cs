@@ -27,6 +27,10 @@ namespace PetitParis
         [SerializeField] TMP_Text popup;
         [SerializeField, Range(0.2f, 2f)] float popupDuration = 0.8f;
         [SerializeField, Range(0.01f, 0.2f)] float popupRise = 0.06f;
+        [Tooltip("글자를 띄울 거리 (눈앞, 월드 m). 주운 자리는 눈에서 몇 cm라 거기 띄우면 글자가 시야를 덮는다.")]
+        [SerializeField, Range(0.1f, 0.6f)] float popupDistance = 0.25f;
+        [Tooltip("눈높이보다 얼마나 아래에서 시작할지 (월드 m).")]
+        [SerializeField, Range(0f, 0.1f)] float popupDrop = 0.03f;
 
         [Header("별점")]
         [SerializeField, Range(0.1f, 1f)] float scoreStarRatio = 0.6f;
@@ -172,9 +176,20 @@ namespace PetitParis
             popup.gameObject.SetActive(true);
             popup.text = text;
             popupColor = color;
-            popupStart = at + Vector3.up * 0.04f;
+            popupStart = PopupAnchor(at);
             popupTimer = 0f;
             UpdatePopup();
+        }
+
+        /// <summary>눈앞 popupDistance, 수평 방향 기준. 카메라가 없으면 주운 자리 위.</summary>
+        Vector3 PopupAnchor(Vector3 pickedAt)
+        {
+            if (rig == null || rig.EyeCamera == null) return pickedAt + Vector3.up * 0.04f;
+            Transform eye = rig.EyeCamera.transform;
+            Vector3 forward = eye.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 1e-6f) forward = rig.transform.forward;
+            return eye.position + forward.normalized * popupDistance + Vector3.down * popupDrop;
         }
 
         void UpdatePopup()

@@ -170,6 +170,7 @@ namespace PetitParis
             Vector3 forward = Vector3.ProjectOnPlane(cam.forward, Vector3.up);
             if (forward.sqrMagnitude < 1e-4f) forward = rig.transform.forward;
             forward.Normalize();
+            // 패널은 깊이 검사 없이 그린다 (빌더의 MakeOverlay). 치즈 바퀴에 코를 대고 도착해 패널 자리가 바퀴 속이어도 보인다.
             completePanel.SetPositionAndRotation(cam.position + forward * completePanelDistance, Quaternion.LookRotation(forward, Vector3.up));
             completePanel.gameObject.SetActive(true);
 
@@ -191,7 +192,8 @@ namespace PetitParis
                     scoreLines +
                     $"{PetitParisText.CompleteTime}  {total / 60}:{total % 60:00}\n" +
                     $"{PetitParisText.CompleteDeaths}  {deaths}\n\n" +
-                    (crumbs != null ? $"<size=70%>{PetitParisText.CompleteStarRule}</size>\n" : "") +
+                    // 작은 글씨 줄 다음에 빈 줄: 바로 다음 줄이 작은 줄 간격으로 붙어 겹치는 TMP 동작을 피한다
+                    (crumbs != null ? $"<size=70%>{PetitParisText.CompleteStarRule}</size>\n\n" : "") +
                     $"{PetitParisText.CompleteRestart}";
             }
         }

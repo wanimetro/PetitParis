@@ -55,6 +55,8 @@ namespace PetitParis.EditorTools
             report.Check(rig.Body != null, $"CharacterController 반지름 {cfg.bodyRadius * 100f:F1}cm 높이 {cfg.bodyHeight * 100f:F1}cm", "CharacterController가 없습니다.");
             report.Info($"배율 x{cfg.Magnification:F1}, 눈높이 {cfg.targetEyeHeight * 100f:F0}cm, 걷기 {cfg.walkSpeed:F2} m/s(체감 {cfg.ToPerceived(cfg.walkSpeed):F1}), 질주 {cfg.dashSpeed:F2} m/s(체감 {cfg.ToPerceived(cfg.dashSpeed):F1})");
 
+            CheckSpawnOpenness(report, rig.transform.position + Vector3.up * cfg.targetEyeHeight);
+
             CheckPoseDriver(report, rig.EyeCamera.GetComponent<TrackedPoseDriver>(), "Main Camera");
             foreach (var name in new[] { "Left Controller", "Right Controller" })
             {
@@ -213,6 +215,15 @@ namespace PetitParis.EditorTools
                 report.Info($"비둘기 무리 {Object.FindObjectsByType<PigeonFlock>(FindObjectsInactive.Include).Length}개, 이야기 구역 {Object.FindObjectsByType<RatStoryTrigger>(FindObjectsInactive.Include).Length}개");
                 var goal = flow != null ? new SerializedObject(flow).FindProperty("goalVolume")?.objectReferenceValue as Collider : null;
                 report.Check(goal != null && goal.bounds.min.y > 0.5f, "목적지 = 주방 식탁 위 치즈", "목적지(goalVolume)가 식탁 위(높이 0.9m)가 아닙니다.", warnOnly: true);
+                CheckGoalReachableAtWheel(report, goal);
+                var completePanel = flow != null ? new SerializedObject(flow).FindProperty("completePanel")?.objectReferenceValue as Transform : null;
+                if (completePanel != null)
+                {
+                    var renderers = completePanel.GetComponentsInChildren<Renderer>(true);
+                    bool allOverlay = renderers.Length > 0 && renderers.All(r => r.sharedMaterial != null && r.sharedMaterial.renderQueue >= (int)RenderQueue.Overlay);
+                    report.Check(allOverlay, "완료 패널 = 맨 위에 그림 (치즈 바퀴에 가려지지 않음)",
+                        "완료 패널이 일반 깊이 검사로 그려집니다. 치즈 바퀴에 코를 대고 도착하면 패널이 바퀴 속에 가려집니다 (메뉴 3번으로 다시 생성).");
+                }
 
                 var guide = Object.FindAnyObjectByType<RatGuideArrow>();
                 if (report.Check(guide != null, "내비게이션 화살표(RatGuideArrow) 있음", "RatGuideArrow가 없습니다.", warnOnly: true))
@@ -247,6 +258,55 @@ namespace PetitParis.EditorTools
             var buildScenes = EditorBuildSettings.scenes;
             report.Check(buildScenes.Length > 0 && buildScenes[0].path == PetitParisPaths.Scene && buildScenes[0].enabled,
                 "Build 씬 목록 첫 번째 = PetitParisVR", "PetitParisVR이 Build 씬 목록 맨 앞에 없습니다 (메뉴 3번).", warnOnly: true);
+        }
+
+        /// <summary>
+        /// 시작 지점이 좁은 틈에 갇혀 있지 않은지 본다. 눈높이에서 수평 8방향으로 레이를 쏴 0.5m 넘게 트인 방향을 센다.
+        /// 틈 안에서 시작하면 고개를 돌릴 때 화면 전체가 벽 한 색으로 덮인다 ("갈색 화면" 문제, 2026-11-14).
+        /// </summary>
+        static void CheckSpawnOpenness(Report report, Vector3 eye)
+        {
+            const float clearDistance = 0.5f;
+            const int minOpenDirections = 3;
+            Physics.SyncTransforms();
+            int mask = ~(1 << PetitParisBuildKit.PlayerLayer);
+            int open = 0;
+            for (int i = 0; i < 8; i++)
+            {
+                var dir = Quaternion.Euler(0f, i * 45f, 0f) * Vector3.forward;
+                if (!Physics.Raycast(eye, dir, clearDistance, mask, QueryTriggerInteraction.Ignore)) open++;
+            }
+            report.Check(open >= minOpenDirections, $"시작 지점 시야 트임: 8방향 중 {open}방향이 {clearDistance}m 이상 트임",
+                $"시작 지점 {eye} 주변 8방향 중 {open}방향만 {clearDistance}m 이상 트여 있습니다. 좁은 틈 안에서 시작하면 돌아볼 때 화면이 벽으로 덮입니다.");
+        }
+
+        /// <summary>
+        /// 식탁 위 치즈 바퀴에는 충돌체가 있어 쥐가 바퀴 가장자리에서 멈춘다.
+        /// 동서남북 어느 쪽에서 바퀴에 닿아도 쥐 몸 중심이 도착 구역 안이어야 한다 (2026-11-14: 서쪽에서 닿으면 구역 밖이라 도착이 안 됐음).
+        /// </summary>
+        static void CheckGoalReachableAtWheel(Report report, Collider goal)
+        {
+            var wheelGO = GameObject.Find("GoalCheeseWheel");
+            var wheel = wheelGO != null ? wheelGO.GetComponent<Collider>() : null;
+            var rig = Object.FindAnyObjectByType<RatScaleRig>();
+            if (goal == null || wheel == null || rig == null || !rig.IsValid)
+            {
+                report.Check(false, "", "치즈 바퀴(GoalCheeseWheel) 충돌체 또는 도착 구역을 찾지 못해 도착 가능 여부를 점검하지 못했습니다.", warnOnly: true);
+                return;
+            }
+            Bounds w = wheel.bounds;
+            float ratRadius = rig.Config.bodyRadius;
+            float bodyY = w.min.y + rig.Config.bodyHeight * 0.5f;
+            int inside = 0;
+            var dirs = new[] { Vector3.right, Vector3.left, Vector3.forward, Vector3.back };
+            foreach (var d in dirs)
+            {
+                float reach = Mathf.Abs(Vector3.Dot(w.extents, d)) + ratRadius + 0.005f; // 바퀴 가장자리에 닿은 쥐 몸 중심
+                Vector3 p = new Vector3(w.center.x, bodyY, w.center.z) + d * reach;
+                if (goal.bounds.Contains(p)) inside++;
+            }
+            report.Check(inside == dirs.Length, "치즈 바퀴에 어느 방향에서 닿아도 도착 구역 안",
+                $"치즈 바퀴에 닿은 위치 4방향 중 {inside}방향만 도착 구역 안입니다. 바퀴에 막혀 도착하지 못할 수 있습니다.");
         }
 
         static void CheckPoseDriver(Report report, TrackedPoseDriver driver, string owner)
@@ -285,7 +345,7 @@ namespace PetitParis.EditorTools
                 if (fails > 0) Debug.LogError(sb.ToString());
                 else if (warns > 0) Debug.LogWarning(sb.ToString());
                 else Debug.Log(sb.ToString());
-                EditorUtility.DisplayDialog("PETIT PARIS 검증", $"FAIL {fails}개, WARN {warns}개\n자세한 내용은 Console을 확인하세요.", "확인");
+                if (!PetitParisBuildKit.AssumeYes) EditorUtility.DisplayDialog("PETIT PARIS 검증", $"FAIL {fails}개, WARN {warns}개\n자세한 내용은 Console을 확인하세요.", "확인");
             }
         }
     }

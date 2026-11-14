@@ -30,17 +30,32 @@ namespace PetitParis.EditorTools
 
         // ───────────────────────── 씬 ─────────────────────────
 
+        /// <summary>
+        /// 자동화(Unity MCP 등)용. true면 덮어쓰기 확인 대화상자를 띄우지 않고 "예"로 처리하며, 오류는 Console에만 남긴다.
+        /// 모달 대화상자가 뜨면 에디터가 멈춰 MCP 호출이 시간 초과되기 때문이다. 메뉴에서 직접 실행할 때는 false 그대로 둔다.
+        /// 사용: PetitParisBuildKit.AssumeYes = true; try { PetitParisLevelBuilder.BuildGame(); } finally { AssumeYes = false; }
+        /// </summary>
+        public static bool AssumeYes;
+
         /// <summary>새 씬을 만들 준비. 취소하면 false. 기존 씬은 건드리지 않는다.</summary>
         public static bool PrepareNewScene(string scenePath, out Scene scene)
         {
             scene = default;
             if (EditorApplication.isPlayingOrWillChangePlaymode)
             {
-                EditorUtility.DisplayDialog("PETIT PARIS", "Play 모드를 끈 뒤 다시 실행하세요.", "확인");
+                Fail("Play 모드를 끈 뒤 다시 실행하세요.");
                 return false;
             }
-            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return false;
-            if (File.Exists(scenePath) &&
+            if (AssumeYes)
+            {
+                if (SceneManager.GetActiveScene().isDirty)
+                {
+                    Fail("저장되지 않은 씬 변경이 있어 자동 생성을 중단했습니다. 저장하거나 버린 뒤 다시 실행하세요.");
+                    return false;
+                }
+            }
+            else if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return false;
+            if (File.Exists(scenePath) && !AssumeYes &&
                 !EditorUtility.DisplayDialog("PETIT PARIS",
                     $"{scenePath} 이(가) 이미 있습니다.\n새로 만들어 덮어쓸까요? (다른 씬은 건드리지 않습니다)", "덮어쓰기", "취소"))
                 return false;
@@ -850,6 +865,49 @@ namespace PetitParis.EditorTools
             return (root, tmp);
         }
 
+        /// <summary>
+        /// Panel()로 만든 패널을 깊이 검사 없이 맨 위에 그리게 바꾼다 (다른 물체에 가려지지 않음).
+        /// 그리는 순서는 화면 페이드(Overlay+100)보다 앞이라, 페이드가 켜지면 패널도 덮인다.
+        /// 완료 패널용: 목적지 치즈 바퀴에 코를 대고 도착하면 눈앞 패널 자리가 바퀴 속이다.
+        /// </summary>
+        public const int OverlayPanelQueue = (int)RenderQueue.Overlay + 50;
+
+        public static void MakeOverlay(GameObject panelRoot, MaterialLibrary m)
+        {
+            var bg = panelRoot.transform.Find("Background");
+            var bgRenderer = bg != null ? bg.GetComponent<MeshRenderer>() : null;
+            var fadeShader = Shader.Find(PetitParisPaths.FadeShader);
+            if (bgRenderer != null && fadeShader != null)
+            {
+                var mat = m.Custom("PP_PanelBackgroundOverlay", fadeShader, new Color(0.08f, 0.08f, 0.1f, 1f));
+                mat.renderQueue = OverlayPanelQueue;
+                bgRenderer.sharedMaterial = mat;
+            }
+
+            var tmp = panelRoot.GetComponentInChildren<TextMeshPro>(true);
+            var overlayShader = Shader.Find("TextMeshPro/Mobile/Distance Field Overlay");
+            if (tmp == null || overlayShader == null || tmp.fontSharedMaterial == null)
+            {
+                Debug.LogWarning("[PetitParis] 패널 글자를 맨 위에 그리지 못했습니다 (TMP Overlay 셰이더 또는 글꼴 머티리얼 없음): " + panelRoot.name);
+                return;
+            }
+            string path = $"{PetitParisPaths.Materials}/PP_PanelTextOverlay.mat";
+            var textMat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (textMat == null)
+            {
+                textMat = new Material(tmp.fontSharedMaterial);
+                AssetDatabase.CreateAsset(textMat, path);
+            }
+            else
+            {
+                textMat.CopyPropertiesFromMaterial(tmp.fontSharedMaterial); // 글꼴 아틀라스 등 최신 값
+            }
+            textMat.shader = overlayShader;
+            textMat.renderQueue = OverlayPanelQueue + 10; // 배경 다음
+            EditorUtility.SetDirty(textMat);
+            tmp.fontSharedMaterial = textMat;
+        }
+
         public static GameObject RemoveCollider(GameObject go)
         {
             var c = go.GetComponent<Collider>();
@@ -996,7 +1054,7 @@ namespace PetitParis.EditorTools
         public static void Fail(string message)
         {
             Debug.LogError("[PetitParis] " + message);
-            EditorUtility.DisplayDialog("PETIT PARIS", message, "확인");
+            if (!AssumeYes) EditorUtility.DisplayDialog("PETIT PARIS", message, "확인");
         }
     }
 

@@ -10,7 +10,8 @@ namespace PetitParis.EditorTools
     /// 실제 플레이용 게임 씬 PetitParisVR.unity (해 질 녘 파리 거리. 외부 모델 없이 코드 + 자체 생성 질감).
     ///
     /// 동선 (월드 미터, +Z가 북쪽, 경로 길이 약 25m ≈ 걷기 3~4분)
-    ///   시작   카페 벽 틈 (-3.25, 0, -0.4) → 동쪽을 보고 시작, 틈 안은 안전 구역
+    ///   시작   카페 벽 틈 입구 바로 앞 (-2.85, 0, -0.4) → 동쪽을 보고 시작, 틈 안과 입구 앞은 안전 구역
+    ///          (틈 안에서 시작하면 돌아볼 때 화면 전체가 틈 벽으로 덮인다 — "갈색 화면" 문제)
     ///   공간1  카페 테라스 z 0~7      : 테이블 3세트(의자 아래 안전), 보행자 A가 테라스를 한 바퀴씩 돈다
     ///   공간2  빵집 앞 보도 z 7~13    : 보행자 B가 지그재그 왕복, 벤치 아래 안전 구역
     ///   공간3  좁은 골목 z 13~23      : 중간을 자전거가 가로질러 왕복 (z 16.4~17.6), 북쪽에서 빗자루 웨이터 추격
@@ -27,10 +28,13 @@ namespace PetitParis.EditorTools
     /// </summary>
     public static class PetitParisLevelBuilder
     {
-        static readonly Vector3 Spawn = new Vector3(-3.25f, 0f, -0.4f);
+        // 벽면(x = -3.0)에서 15cm 앞. 틈(x -3.4~-3.0) 안이 아니라 입구 바로 바깥이다.
+        static readonly Vector3 Spawn = new Vector3(-2.85f, 0f, -0.4f);
         const float SpawnYaw = 90f; // 동쪽(+X)을 보고 시작
         /// <summary>목적지: 주방 식탁 위 치즈 바퀴 옆 (식탁 윗면 높이 0.9m).</summary>
         static readonly Vector3 CheeseGoal = new Vector3(-4.45f, 0.9f, 20.3f);
+        /// <summary>식탁 위 큰 치즈 바퀴(충돌체 있음)의 바닥 중심. 도착 구역도 이 점을 중심으로 둔다.</summary>
+        static readonly Vector3 GoalWheelCenter = CheeseGoal + new Vector3(-0.25f, 0f, 0f);
         const float KitchenFloorTop = 0.003f;
 
         [MenuItem("PetitParis/3. Build Game Scene (PetitParisVR)", priority = 3)]
@@ -106,12 +110,13 @@ namespace PetitParis.EditorTools
             mso.ApplyModifiedPropertiesWithoutUndo();
 
             // 목적지: 주방 식탁 위 치즈 (쥐 몸 중심이 식탁 윗면 위 치즈 주변에 들어오면 완료)
+            // 치즈 바퀴에는 충돌체가 있어 쥐가 바퀴 가장자리에서 멈춘다 → 구역을 바퀴 중심에 두고, 어느 방향에서 닿아도 안에 들어오게 넓힌다
             var goal = new GameObject("Goal_KitchenCheese");
             goal.transform.SetParent(gameplay, false);
-            goal.transform.position = CheeseGoal + new Vector3(0f, 0.1f, 0f);
+            goal.transform.position = GoalWheelCenter + new Vector3(0f, 0.1f, 0f);
             var goalBox = goal.AddComponent<BoxCollider>();
             goalBox.isTrigger = true;
-            goalBox.size = new Vector3(0.9f, 0.2f, 0.9f);
+            goalBox.size = new Vector3(1.0f, 0.2f, 1.0f);
             var goalPoint = Group("GoalPoint", gameplay);
             goalPoint.position = CheeseGoal;
 
@@ -187,12 +192,13 @@ namespace PetitParis.EditorTools
             hudBackR.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             hudBackR.receiveShadows = false;
 
-            // 조작 안내 패널 (시작 지점 앞, 동쪽을 바라보는 쥐가 읽을 수 있게)
-            var (intro, introText) = Panel("IntroPanel", gameplay, new Vector3(-2.72f, 0.25f, -0.4f), Quaternion.LookRotation(Vector3.right),
+            // 조작 안내 패널 (시작 지점 53cm 앞, 동쪽을 바라보는 쥐가 읽을 수 있게). Spawn을 옮기면 같이 따라간다.
+            var (intro, introText) = Panel("IntroPanel", gameplay, Spawn + new Vector3(0.53f, 0.25f, 0f), Quaternion.LookRotation(Vector3.right),
                 new Vector2(0.38f, 0.27f), "<b>PETIT PARIS</b>\n" + PetitParisText.IntroBody, 0.12f, font, m);
             // 완료 패널 (도착하면 카메라 앞에 나타남)
             var (complete, completeText) = Panel("CompletePanel", gameplay, goalPoint.position + Vector3.up * 0.15f, Quaternion.identity,
                 new Vector2(0.34f, 0.24f), PetitParisText.CompleteTitle, 0.12f, font, m);
+            MakeOverlay(complete, m); // 치즈 바퀴 등에 가려지지 않게
             complete.SetActive(false);
 
             // 내비게이션 화살표 경로 (시작 → 의자 옆 안전한 길 → 체크포인트들 → 출구)
@@ -291,7 +297,8 @@ namespace PetitParis.EditorTools
             TexBoxXZ("Ground_Main", cafe, -3.4f, -3.0f, -0.25f, 7.0f, 0f, 4f, p.rustic, 1.2f);
             TexBoxXZ("Ground_Mass", cafe, -9f, -3.4f, -1.0f, 7.0f, 0f, 4f, p.rustic, 1.2f);
             TexBoxXZ("Crack_Back", cafe, -3.42f, -3.4f, -0.6f, -0.2f, 0f, 0.3f, p.darkBack, 1f, false);
-            SafeZone("SafeZone_WallCrack", cafe, new Vector3(-3.2f, 0.12f, -0.4f), new Vector3(0.4f, 0.24f, 0.3f), "벽 틈", false, m);
+            // 틈 안(x -3.4~-3.0) + 시작 지점이 있는 입구 앞(~-2.75)까지
+            SafeZone("SafeZone_WallCrack", cafe, new Vector3(-3.075f, 0.12f, -0.4f), new Vector3(0.65f, 0.24f, 0.3f), "벽 틈", false, m);
 
             var spec = new FacadeSpec { floors = 4, seed = 11, litChance = 0.5f };
             TexBoxXZ("Upper_Mass", cafe, -9f, -3.0f, -1.0f, 7.0f, 4f, spec.TopY, p.limestone, 1.2f);
@@ -648,8 +655,8 @@ namespace PetitParis.EditorTools
                 foreach (float z in new[] { 19.68f, 20.92f })
                     TexBoxXZ("Leg", table, x - 0.04f, x + 0.04f, z - 0.04f, z + 0.04f, 0f, 0.86f, woodTop, 0.8f);
             SafeZone("SafeZone_UnderTable", table, new Vector3(-4.6f, 0.2f, 20.3f), new Vector3(1.7f, 0.4f, 1.1f), "식탁 밑", false, m);
-            var wheel = Cylinder("GoalCheeseWheel", table, new Vector3(CheeseGoal.x - 0.25f, 0.9f + 0.075f, CheeseGoal.z), 0.42f, 0.15f, cheese);
-            RemoveCollider(Cylinder("Rind", table, new Vector3(CheeseGoal.x - 0.25f, 0.9f + 0.075f, CheeseGoal.z), 0.43f, 0.12f, cheeseRind));
+            var wheel = Cylinder("GoalCheeseWheel", table, GoalWheelCenter + new Vector3(0f, 0.075f, 0f), 0.42f, 0.15f, cheese);
+            RemoveCollider(Cylinder("Rind", table, GoalWheelCenter + new Vector3(0f, 0.075f, 0f), 0.43f, 0.12f, cheeseRind));
             wheel.name = "GoalCheeseWheel";
             RemoveCollider(Box("CheeseWedge", table, new Vector3(CheeseGoal.x + 0.05f, 0.93f, CheeseGoal.z + 0.12f), new Vector3(0.14f, 0.06f, 0.09f), cheese));
             RemoveCollider(Box("Baguette", table, new Vector3(-5.0f, 0.935f, 19.85f), new Vector3(0.6f, 0.065f, 0.065f), m.Lit("PP_BaguetteCrust", new Color(0.82f, 0.52f, 0.22f))));

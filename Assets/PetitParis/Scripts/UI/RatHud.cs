@@ -20,9 +20,9 @@ namespace PetitParis
         [SerializeField] TMP_Text scoreText;
         [SerializeField] TMP_Text messageText;
 
-        [SerializeField, Range(0.05f, 1f)] float distance = 0.26f;
-        [Tooltip("눈높이보다 얼마나 아래에 둘지 (월드 m).")]
-        [SerializeField, Range(-0.2f, 0.2f)] float drop = 0.055f;
+        [SerializeField, Range(0.05f, 1f)] float distance = 0.24f;
+        [Tooltip("눈높이보다 얼마나 아래에 둘지 (월드 m). RatGuideArrow(앞 0.26m, 눈 아래 0.055m)와 겹치지 않게 그 아래에 둔다 (시선 아래 약 23°).")]
+        [SerializeField, Range(-0.2f, 0.2f)] float drop = 0.1f;
         [SerializeField, Range(0.5f, 20f)] float followSharpness = 4f;
         [Tooltip("시선이 이 각도 이상 벗어나야 따라오기 시작한다.")]
         [SerializeField, Range(0f, 60f)] float deadZoneDegrees = 18f;

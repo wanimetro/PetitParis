@@ -164,6 +164,10 @@ namespace PetitParis.EditorTools
             cam.farClipPlane = config.farClip;
             cam.allowHDR = false;
             cam.allowMSAA = true;
+            // URP 후처리(Tonemapping·Color Adjustments·Vignette, SetupDusk의 전역 Volume)를 켠다
+            var camData = camGO.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+            camData.renderPostProcessing = true;
+            camData.antialiasing = UnityEngine.Rendering.Universal.AntialiasingMode.None; // MSAA만 사용 (Quest)
             camGO.AddComponent<AudioListener>();
             ConfigurePose(camGO.AddComponent<TrackedPoseDriver>(), refs, "Head");
             parts.camera = cam;

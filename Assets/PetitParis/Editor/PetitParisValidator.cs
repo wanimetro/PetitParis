@@ -216,6 +216,8 @@ namespace PetitParis.EditorTools
                 var goal = flow != null ? new SerializedObject(flow).FindProperty("goalVolume")?.objectReferenceValue as Collider : null;
                 report.Check(goal != null && goal.bounds.min.y > 0.5f, "목적지 = 주방 식탁 위 치즈", "목적지(goalVolume)가 식탁 위(높이 0.9m)가 아닙니다.", warnOnly: true);
                 CheckGoalReachableAtWheel(report, goal);
+                CheckThirdPartyTextures(report);
+                CheckDuskLighting(report);
                 var completePanel = flow != null ? new SerializedObject(flow).FindProperty("completePanel")?.objectReferenceValue as Transform : null;
                 if (completePanel != null)
                 {
@@ -307,6 +309,54 @@ namespace PetitParis.EditorTools
             }
             report.Check(inside == dirs.Length, "치즈 바퀴에 어느 방향에서 닿아도 도착 구역 안",
                 $"치즈 바퀴에 닿은 위치 4방향 중 {inside}방향만 도착 구역 안입니다. 바퀴에 막혀 도착하지 못할 수 있습니다.");
+        }
+
+        /// <summary>바닥·벽 주요 재질이 Poly Haven 질감(ThirdParty, 최대 1K)을 쓰는지. 없으면 코드 생성 질감으로 대체된 상태.</summary>
+        static void CheckThirdPartyTextures(Report report)
+        {
+            var names = new[] { "PP_Cobble", "PP_Slabs", "PP_Limestone", "PP_PlasterCream", "PP_ZincRoof", "PP_KitchenFloor" };
+            var missing = new List<string>();
+            foreach (var n in names)
+            {
+                var mat = AssetDatabase.LoadAssetAtPath<Material>($"{PetitParisPaths.Materials}/{n}.mat");
+                var tex = mat != null && mat.HasProperty("_BaseMap") ? mat.GetTexture("_BaseMap") : null;
+                string path = tex != null ? AssetDatabase.GetAssetPath(tex) : "";
+                if (!path.StartsWith(PetitParisThirdPartyImport.Root)) missing.Add(n);
+            }
+            report.Check(missing.Count == 0, $"바닥·벽 질감 = Poly Haven (CC0, {names.Length}개 재질)",
+                "Poly Haven 질감 대신 코드 생성 질감을 쓰는 재질: " + string.Join(", ", missing) + " (ThirdParty/PolyHaven 파일 확인 후 메뉴 3번)", warnOnly: true);
+
+            int over = 0;
+            foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { PetitParisThirdPartyImport.Root.TrimEnd('/') }))
+            {
+                var ti = AssetImporter.GetAtPath(AssetDatabase.GUIDToAssetPath(guid)) as TextureImporter;
+                if (ti != null && ti.maxTextureSize > PetitParisThirdPartyImport.MaxTextureSize) over++;
+            }
+            report.Check(over == 0, $"ThirdParty 질감 최대 {PetitParisThirdPartyImport.MaxTextureSize}px",
+                $"ThirdParty 질감 {over}장이 {PetitParisThirdPartyImport.MaxTextureSize}px보다 큽니다 (메뉴 5번 Reimport Third Party).", warnOnly: true);
+        }
+
+        /// <summary>해 질 녘 조명·후처리: 실시간 그림자 + 짧은 그림자 거리, 가벼운 후처리만 (Bloom 없음), 카메라 후처리 켬.</summary>
+        static void CheckDuskLighting(Report report)
+        {
+            var sun = RenderSettings.sun;
+            report.Check(sun != null && sun.shadows != LightShadows.None, "해: 실시간 그림자", "해(RenderSettings.sun)가 없거나 그림자가 꺼져 있습니다.", warnOnly: true);
+            var mobile = AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset>("Assets/Settings/Mobile_RPAsset.asset");
+            report.Check(mobile != null && mobile.shadowDistance <= 15f, $"Quest 그림자 거리 {mobile?.shadowDistance:0}m (15m 이하)",
+                $"Quest(Mobile_RPAsset) 그림자 거리가 {mobile?.shadowDistance:0}m입니다. 15m 이하로 (메뉴 3번이 {PetitParisParisKit.DuskShadowDistance}m로 맞춤).", warnOnly: true);
+
+            var volumes = Object.FindObjectsByType<Volume>(FindObjectsInactive.Include);
+            var profile = volumes.Select(v => v.sharedProfile).FirstOrDefault(p => p != null);
+            if (report.Check(profile != null, "전역 후처리 Volume 있음", "후처리 Volume이 없습니다 (메뉴 3번).", warnOnly: true))
+            {
+                bool ok = profile.Has<UnityEngine.Rendering.Universal.Tonemapping>() && profile.Has<UnityEngine.Rendering.Universal.ColorAdjustments>() && profile.Has<UnityEngine.Rendering.Universal.Vignette>();
+                bool heavy = profile.Has<UnityEngine.Rendering.Universal.Bloom>() || profile.Has<UnityEngine.Rendering.Universal.DepthOfField>() || profile.Has<UnityEngine.Rendering.Universal.MotionBlur>();
+                report.Check(ok, "후처리: Tonemapping + Color Adjustments + Vignette", "후처리 프로필에 Tonemapping/Color Adjustments/Vignette 중 빠진 것이 있습니다.", warnOnly: true);
+                report.Check(!heavy, "후처리: Bloom·피사계심도·모션블러 없음 (Quest 성능)", "후처리에 Bloom/피사계심도/모션블러가 있습니다. Quest에서 성능을 확인한 뒤에만 켭니다 (모션블러는 멀미).", warnOnly: true);
+            }
+            var rig = Object.FindAnyObjectByType<RatScaleRig>();
+            var camData = rig != null && rig.EyeCamera != null ? rig.EyeCamera.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>() : null;
+            report.Check(camData != null && camData.renderPostProcessing, "Main Camera 후처리 켬", "Main Camera의 Post Processing이 꺼져 있어 후처리가 보이지 않습니다.", warnOnly: true);
         }
 
         static void CheckPoseDriver(Report report, TrackedPoseDriver driver, string owner)

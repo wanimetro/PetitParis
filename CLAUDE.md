@@ -6,6 +6,7 @@ Unity 6000.3.9f1, URP 17.3, XR Interaction Toolkit 3.3.2, Input System 1.18, Ope
 - 개발 가이드·테스트·빌드 순서: `docs/README.md` (작업 전에 읽는다)
 - 1단계 설계(쥐 시점·캘리브레이션): `docs/STAGE1.md`
 - 에셋 출처: `docs/CREDITS.md`
+- **다음 작업과 알려진 문제: `docs/NEXT_STEPS.md` (로컬 Claude Code + Unity MCP로 이어서 작업. 먼저 읽는다)**
 
 ## 구조
 - 코드와 에셋은 모두 `Assets/PetitParis/`. 씬은 에디터 메뉴 `PetitParis > 1. Sandbox / 3. Game`으로 생성한다. 씬 YAML을 직접 손으로 고치지 않는다. 씬 구성을 바꿀 때는 `Editor/PetitParisBuildKit.cs`, `PetitParisLevelBuilder.cs`를 수정한다.
@@ -21,6 +22,7 @@ Unity 6000.3.9f1, URP 17.3, XR Interaction Toolkit 3.3.2, Input System 1.18, Ope
   - 클라우드 세션에서는 Unity 패키지 서버가 막혀 있다. 대신 `https://github.com/needle-mirror/<패키지명>` 미러의 해당 버전 태그(예: `com.unity.xr.interaction.toolkit` 3.3.2)를 shallow clone해서 소스로 확인한다. 기억에 의존해 API 이름을 쓰지 않는다.
 - 화면 텍스트는 한국어. 문장은 `PetitParisText`에 const로 추가한다 (한글 폰트 글자 사전 채우기에 쓰임). 폰트는 나눔고딕(OFL).
 - 에셋·음원·이미지는 무료이면서 라이선스가 확인된 것만 쓰고 `docs/CREDITS.md`에 기록한다. 후보는 먼저 사용자에게 알린다.
+- 로컬 세션에서는 Unity MCP로 직접 Play·스크린샷·Console을 확인하며 작업한다. 화면을 확인하지 않은 변경은 "미검증"으로 표시한다.
 - 사용자 PC에서 Quest Link가 안 될 수 있다. 에디터 테스트는 XR Device Simulator, 실기 테스트는 Android 빌드로 한다.
 - Unity 에디터나 실기기에서 확인하지 않은 내용은 "미검증"으로 표시한다. 테스트 완료라고 주장하지 않는다.
 - 변경 후에는 메뉴 `PetitParis > 4. Validate Scene`으로 점검할 수 있게 검증 항목도 함께 갱신한다.

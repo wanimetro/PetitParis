@@ -271,6 +271,10 @@ namespace PetitParis.EditorTools
             flowGO.transform.SetParent(gameplay, false);
             var flow = flowGO.AddComponent<PetitParisGameFlow>();
             var flowSfx = flowGO.AddComponent<AudioSource>();
+            // 배경음 (거리 소리 + 아코디언 왈츠) — Quest 2 테스트에서 소리가 거의 없었다 (Q2-04)
+            var ambience = flowGO.AddComponent<RatAmbience>();
+            Wire(ambience, ("cityLoop", flowGO.AddComponent<AudioSource>()), ("musicLoop", flowGO.AddComponent<AudioSource>()),
+                ("sfx", flowGO.AddComponent<AudioSource>()));
             Wire(flow, ("rig", rig.scaleRig), ("input", rig.reader), ("locomotion", rig.locomotion), ("respawn", rig.respawn),
                 ("danger", rig.danger), ("checkpoints", manager), ("fader", rig.fader), ("objectiveMarker", objective), ("sfx", flowSfx),
                 ("goalVolume", goalBox), ("goalMarkerTarget", goalPoint), ("introPanel", intro), ("introText", introText),
@@ -280,6 +284,7 @@ namespace PetitParis.EditorTools
             Wire(rig.respawn, ("checkpoints", manager));
             Wire(rig.statusPanel, ("gameFlow", flow), ("checkpoints", manager), ("crumbs", collection));
             Wire(flow, ("crumbs", collection));
+            Wire(ambience, ("gameFlow", flow));
             var collectionSfx = collectionGO.AddComponent<AudioSource>();
             Wire(collection, ("rig", rig.scaleRig), ("danger", rig.danger), ("respawn", rig.respawn), ("checkpoints", manager),
                 ("gameFlow", flow), ("sfx", collectionSfx), ("popup", popup));

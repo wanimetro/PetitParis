@@ -125,6 +125,8 @@ namespace PetitParis
             if (introText != null) introText.text = "<b>" + PetitParisText.Title + "</b>\n" + PetitParisText.IntroBody;
             if (completePanel != null) completePanel.gameObject.SetActive(false);
             if (menuPanel != null) menuPanel.gameObject.SetActive(false);
+            AudioListener.pause = false; // 다시 시작했을 때 일시 정지 소리가 남지 않게
+            Time.timeScale = 1f;
             CurrentPhase = Phase.Intro;
             if (lockMovementDuringIntro && locomotion != null) locomotion.SetInputLocked(true);
         }

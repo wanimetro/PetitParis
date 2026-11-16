@@ -215,6 +215,11 @@ namespace PetitParis.EditorTools
                     "RatFallRecovery가 리그에 없습니다 (메뉴 3번으로 다시 생성).", warnOnly: true);
                 report.Check(rigRoot != null && rigRoot.GetComponent<RatHaptics>() != null, "컨트롤러 진동(RatHaptics) 있음 (ISSUE-15)",
                     "RatHaptics가 리그에 없습니다.", warnOnly: true);
+                var amb = Object.FindAnyObjectByType<RatAmbience>();
+                report.Check(amb != null && new SerializedObject(amb).FindProperty("cityLoop")?.objectReferenceValue != null,
+                    "배경음(거리 소리·음악) 있음 (Q2-04)", "RatAmbience가 없거나 AudioSource가 연결되지 않았습니다 (메뉴 3번).", warnOnly: true);
+                report.Check(Object.FindObjectsByType<AudioListener>(FindObjectsInactive.Exclude).Length == 1 && !AudioListener.pause,
+                    "AudioListener 1개, 일시 정지 아님", "AudioListener가 1개가 아니거나 AudioListener.pause가 켜져 있습니다.", warnOnly: true);
                 // Quest 2 실기기 테스트 (Q2-02, Q2-03)
                 var lane = GameObject.Find("Paving_BikeLane");
                 var laneMat = lane != null ? lane.GetComponent<MeshRenderer>()?.sharedMaterial : null;

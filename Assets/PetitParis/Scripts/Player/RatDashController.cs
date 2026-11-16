@@ -6,7 +6,9 @@ namespace PetitParis
     /// <summary>
     /// 순간 질주 상태와 속도 곡선 계산. 스스로 움직이지 않는다 (이동은 RatLocomotionController가 적용).
     ///
-    /// - 오른쪽 트리거를 누른 순간, 스틱 입력 방향으로 질주 시작 (입력 없으면 불가)
+    /// - 오른쪽 트리거(또는 오른쪽 그립)를 누르면 스틱 방향으로 질주. 스틱을 안 밀었으면 바라보는 방향으로 (Quest 2 실기기 테스트 Q2-01)
+    /// - 누른 순간 조건이 안 맞아도(공중·쿨다운 끝나기 직전) inputBuffer초 동안 기억했다가 가능해지면 바로 발동
+    /// - 땅에서 막 떨어진 직후(groundGrace초)도 땅으로 본다 (CharacterController.isGrounded가 경사·턱에서 깜빡이기 때문)
     /// - 방향은 시작할 때 고정 → 카메라·진행 방향을 강제로 돌리지 않는다
     /// - 가속(accelerationTime) → 유지 → 감속(decelerationTime) 곡선으로 부드럽게
     /// - 정면 충돌 시 RatLocomotionController가 Stop(true) 호출 → 즉시 정지
@@ -24,7 +26,7 @@ namespace PetitParis
 
         [Header("질주 (속도는 RatScaleConfig.dashSpeed)")]
         [Tooltip("질주 지속 시간(초).")]
-        [SerializeField, Range(0.1f, 1.5f)] float duration = 0.45f;
+        [SerializeField, Range(0.1f, 1.5f)] float duration = 0.6f;
 
         [Tooltip("최고 속도까지 가속하는 시간(초).")]
         [SerializeField, Range(0f, 0.5f)] float accelerationTime = 0.08f;
@@ -33,10 +35,19 @@ namespace PetitParis
         [SerializeField, Range(0f, 0.5f)] float decelerationTime = 0.15f;
 
         [Tooltip("질주 후 다시 쓸 수 있을 때까지의 시간(초).")]
-        [SerializeField, Range(0f, 5f)] float cooldown = 1.2f;
+        [SerializeField, Range(0f, 5f)] float cooldown = 0.8f;
 
-        [Tooltip("이 세기 이상 스틱을 밀어야 질주할 수 있다.")]
-        [SerializeField, Range(0.05f, 1f)] float minStickInput = 0.3f;
+        [Tooltip("이 세기보다 스틱을 약하게 밀었으면 스틱 대신 바라보는 방향으로 질주한다.")]
+        [SerializeField, Range(0.05f, 1f)] float minStickInput = 0.15f;
+
+        [Tooltip("스틱을 안 밀어도 바라보는 방향으로 질주한다.")]
+        [SerializeField] bool dashForwardWithoutStick = true;
+
+        [Tooltip("버튼을 누른 뒤 이 시간(초) 안에 질주할 수 있게 되면 발동한다.")]
+        [SerializeField, Range(0f, 0.5f)] float inputBuffer = 0.25f;
+
+        [Tooltip("땅에서 떨어진 뒤 이 시간(초)까지는 땅으로 본다.")]
+        [SerializeField, Range(0f, 0.3f)] float groundGrace = 0.15f;
 
         [Tooltip("공중에서도 질주 허용.")]
         [SerializeField] bool allowAirDash = false;
@@ -48,6 +59,8 @@ namespace PetitParis
         Vector3 direction;
         float entrySpeed;
         float exitSpeed;
+        float pressedAt = -10f;
+        float lastGroundedAt = -10f;
 
         public DashState State { get; private set; } = DashState.Ready;
         public bool IsDashing => State == DashState.Dashing;
@@ -61,18 +74,23 @@ namespace PetitParis
         /// <summary>질주 종료 (true = 충돌로 정지).</summary>
         public event Action<bool> DashEnded;
 
-        /// <summary>RatLocomotionController가 매 프레임 호출한다.</summary>
-        public void Tick(Vector3 wishDirection, Vector3 currentPlanarVelocity, bool grounded, RatCrouchController crouch, float dt)
+        /// <summary>RatLocomotionController가 매 프레임 호출한다. viewForward = 카메라 수평 정면 (스틱 없이 질주할 때).</summary>
+        public void Tick(Vector3 wishDirection, Vector3 viewForward, Vector3 currentPlanarVelocity, bool grounded, RatCrouchController crouch, float dt)
         {
             if (rig == null) rig = GetComponentInParent<RatScaleRig>();
             if (input == null) input = GetComponentInParent<RatInputReader>();
             if (rig == null || rig.Config == null) return;
 
+            if (grounded) lastGroundedAt = Time.time;
+            if (input != null && input.DashPressedThisFrame) pressedAt = Time.time; // 쿨다운·공중이어도 잠깐 기억
+            bool buffered = Time.time - pressedAt <= inputBuffer;
+            bool groundedish = grounded || Time.time - lastGroundedAt <= groundGrace;
+
             switch (State)
             {
                 case DashState.Ready:
-                    if (input != null && input.DashPressedThisFrame)
-                        TryBegin(wishDirection, currentPlanarVelocity, grounded, crouch);
+                    if (buffered && TryBegin(wishDirection, viewForward, currentPlanarVelocity, groundedish, crouch))
+                        pressedAt = -10f;
                     break;
 
                 case DashState.Dashing:
@@ -88,18 +106,21 @@ namespace PetitParis
             }
         }
 
-        void TryBegin(Vector3 wishDirection, Vector3 currentPlanarVelocity, bool grounded, RatCrouchController crouch)
+        bool TryBegin(Vector3 wishDirection, Vector3 viewForward, Vector3 currentPlanarVelocity, bool grounded, RatCrouchController crouch)
         {
-            if (!IsEnabled) return;
+            if (!IsEnabled) return false;
             float stick = wishDirection.magnitude;
-            if (stick < minStickInput) return;          // 이동 입력이 없으면 질주 불가
-            if (!grounded && !allowAirDash) return;
+            Vector3 dir;
+            if (stick >= minStickInput) dir = wishDirection / stick;
+            else if (dashForwardWithoutStick && viewForward.sqrMagnitude > 1e-6f) { dir = viewForward.normalized; stick = 1f; }
+            else return false;
+            if (!grounded && !allowAirDash) return false;
             if (crouch != null && crouch.IsCrouched)
             {
-                if (!standUpToDash || !crouch.TryStand()) return;
+                if (!standUpToDash || !crouch.TryStand()) return false;
             }
 
-            direction = wishDirection / stick;
+            direction = dir;
             entrySpeed = Vector3.Dot(currentPlanarVelocity, direction);
             entrySpeed = Mathf.Max(0f, entrySpeed);
             exitSpeed = rig.Config.walkSpeed * Mathf.Clamp01(stick);
@@ -107,6 +128,7 @@ namespace PetitParis
             State = DashState.Dashing;
             CurrentVelocity = direction * SpeedAt(0f);
             DashStarted?.Invoke();
+            return true;
         }
 
         float SpeedAt(float t)

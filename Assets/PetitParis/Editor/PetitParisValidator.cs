@@ -215,6 +215,14 @@ namespace PetitParis.EditorTools
                     "RatFallRecovery가 리그에 없습니다 (메뉴 3번으로 다시 생성).", warnOnly: true);
                 report.Check(rigRoot != null && rigRoot.GetComponent<RatHaptics>() != null, "컨트롤러 진동(RatHaptics) 있음 (ISSUE-15)",
                     "RatHaptics가 리그에 없습니다.", warnOnly: true);
+                // Quest 2 실기기 테스트 (Q2-02, Q2-03)
+                var lane = GameObject.Find("Paving_BikeLane");
+                var laneMat = lane != null ? lane.GetComponent<MeshRenderer>()?.sharedMaterial : null;
+                report.Check(laneMat != null && laneMat.name != "PP_AsphaltTex" && GameObject.Find("Paving_Alley") == null,
+                    "자전거 길: 밝은 재질, 골목 포석과 겹치지 않음 (Q2-02)",
+                    "자전거 길이 어두운 아스팔트이거나 골목 포석(Paving_Alley)과 겹칩니다 → Quest 2에서 검게 깜빡임 (메뉴 3번으로 다시 생성).", warnOnly: true);
+                int broomHides = zones.Count(z => { var c = z.Volume != null ? z.Volume.bounds.center : z.transform.position; return c.x > -1.7f && c.x < 0.7f && c.z > 18.4f && c.z < 23.2f; });
+                report.Check(broomHides >= 4, $"빗자루 추격 구간 숨을 곳 {broomHides}곳 (Q2-03)", $"빗자루 추격 구간 숨을 곳이 {broomHides}곳뿐입니다 (4곳 이상 권장).", warnOnly: true);
                 var hudCheck = Object.FindAnyObjectByType<RatHud>();
                 report.Check(hudCheck != null && new SerializedObject(hudCheck).FindProperty("backdrop")?.objectReferenceValue != null,
                     "HUD 배경은 메시지가 있을 때만 (ISSUE-04)", "RatHud.backdrop이 비어 있습니다.", warnOnly: true);

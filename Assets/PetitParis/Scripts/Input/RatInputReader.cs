@@ -29,6 +29,8 @@ namespace PetitParis
         public const string CalibrateAction = "Rat/Calibrate";
         /// <summary>조작법·편안함 모드 메뉴 (Quest Touch X 버튼 / PC Tab). 기존 입력과 겹치지 않는 왼손 X.</summary>
         public const string MenuAction = "Rat/Menu";
+        /// <summary>달리기 켜기/끄기 (왼쪽 스틱 누르기 / PC Caps Lock). 그립(Rat/Run) 누르고 있기와 함께 쓴다.</summary>
+        public const string RunToggleAction = "Rat/RunToggle";
         public const string HeadPositionAction = "Tracking/HeadPosition";
         public const string HeadRotationAction = "Tracking/HeadRotation";
         public const string HeadTrackingStateAction = "Tracking/HeadTrackingState";
@@ -41,7 +43,7 @@ namespace PetitParis
 
         public static readonly string[] RequiredActionNames =
         {
-            MoveAction, TurnAction, DashAction, RunAction, JumpAction, CrouchAction, InteractAction, CalibrateAction, MenuAction,
+            MoveAction, TurnAction, DashAction, RunAction, JumpAction, CrouchAction, InteractAction, CalibrateAction, MenuAction, RunToggleAction,
             HeadPositionAction, HeadRotationAction, HeadTrackingStateAction,
             LeftPositionAction, LeftRotationAction, LeftTrackingStateAction,
             RightPositionAction, RightRotationAction, RightTrackingStateAction,
@@ -50,7 +52,7 @@ namespace PetitParis
         [Tooltip("Assets/PetitParis/Settings/PetitParisInput.inputactions")]
         [SerializeField] InputActionAsset actions;
 
-        InputAction move, turn, dash, run, jump, crouch, interact, calibrate, menu;
+        InputAction move, turn, dash, run, jump, crouch, interact, calibrate, menu, runToggle;
         InputAction headPosition, headState, leftState, rightState;
         bool resolved;
 
@@ -75,6 +77,7 @@ namespace PetitParis
         public bool CrouchPressedThisFrame => WasPressed(crouch);
         public bool InteractPressedThisFrame => WasPressed(interact);
         public bool MenuPressedThisFrame => WasPressed(menu);
+        public bool RunTogglePressedThisFrame => WasPressed(runToggle);
 
         // ── 추적 상태 (InputTrackingState 플래그: Position=1, Rotation=2) ──
         public int HeadTrackingState => ReadInt(headState);
@@ -107,6 +110,7 @@ namespace PetitParis
             interact = Find(InteractAction);
             calibrate = Find(CalibrateAction);
             menu = Find(MenuAction);
+            runToggle = Find(RunToggleAction);
             headPosition = Find(HeadPositionAction);
             headState = Find(HeadTrackingStateAction);
             leftState = Find(LeftTrackingStateAction);

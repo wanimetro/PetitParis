@@ -20,12 +20,12 @@ namespace PetitParis
         /// <summary>조작법 (시작 안내와 X 메뉴에서 같이 쓴다).</summary>
         public const string ControlsBody =
             "왼쪽 스틱  이동      오른쪽 스틱  30도 회전\n" +
-            "왼쪽 그립 누르고 있기  달리기\n" +
-            "왼쪽 스틱을 밀면서 오른쪽 트리거  질주 (짧고 빠르게)\n" +
+            "달리기  왼쪽 스틱 꾹 누르기 (켜기/끄기) 또는 왼쪽 그립 누르고 있기\n" +
+            "질주  오른쪽 트리거 또는 오른쪽 그립 (짧고 빠르게, 바라보는 방향)\n" +
             "A  점프      B  웅크리기 (느리지만 덜 들켜요)\n" +
             "X  조작법·편안함 모드      왼쪽 ≡ 길게  시점 다시 맞추기\n" +
-            "<size=80%>PC: WASD 이동 · Shift 달리기 · 클릭 질주 · Space 점프 · C 웅크리기\n" +
-            "Tab 메뉴 · 마우스 오른쪽 드래그 둘러보기</size>";
+            "<size=80%>PC: WASD 이동 · Shift 누르고 있기/Caps Lock 달리기 · 클릭 질주 · Space 점프\n" +
+            "C 웅크리기 · Tab 메뉴 · 마우스 오른쪽 드래그 둘러보기</size>";
 
         public const string MenuTitle = "일시 정지 · 조작법";
         public const string MenuRules =
@@ -38,7 +38,7 @@ namespace PetitParis
 
         public const string HintFootsteps = "발소리가 커지면\n의자 아래로 숨어요";
         public const string HintHide = "초록 표시가 있는 의자 아래는\n안전해요";
-        public const string HintBakery = "발이 내려오기 전에 지나가요\n스틱 + 오른쪽 트리거 = 질주";
+        public const string HintBakery = "발이 내려오기 전에 지나가요\n오른쪽 트리거 = 질주!";
         public const string HintBike = "자전거 소리를 듣고 건너요";
         public const string HintGoal = "센강 쪽 출구";
         public const string HintSeine = "센강이다!\n…어디선가 치즈 냄새가?";
@@ -46,6 +46,7 @@ namespace PetitParis
         public const string HintKitchenClimb = "널빤지를 타고\n식탁 위 치즈까지!";
         public const string HintStart = "벽 틈은 안전해요\n여기서 천천히 연습해요";
         public const string HintAwning = "차양 밑엔 바게트가 안 떨어져요\n요리사 발은 조심!";
+        public const string HintBroomHide = "빗자루가 오면\n상자 속에 쏙!";
         public const string HintPallet = "팔레트 밑에 숨어요!\n웨이터가 지나갈 때까지";
         public const string HintCrumbs = "빵 부스러기를 모아요 (60% → ★)\n황금 크루아상 3개 → ★";
         public const string HintCrouchStealth = "B로 웅크리면 느리지만\n사람이 가까이 와야 알아채요";
@@ -95,7 +96,7 @@ namespace PetitParis
         public const string MessageComfortOn = "편안함 모드를 켰어요";
         public const string MessageComfortOff = "편안함 모드를 껐어요";
         /// <summary>안전 구역 이름 (빌더에서 쓰는 문자열. 폰트 미리 채우기용으로 여기 모아 둔다).</summary>
-        public const string ZoneNames = "벽 틈 의자 아래 벤치 아래 팔레트 밑 종이 상자 안 조리대 밑 식탁 밑";
+        public const string ZoneNames = "벽 틈 의자 아래 벤치 아래 팔레트 밑 종이 상자 안 와인 상자 안 빵 바구니 밑 조리대 밑 식탁 밑";
         public const string MessageFell = "떨어졌어요! 체크포인트로 돌아갑니다";
         public const string MessageCrumbsKept = "모은 빵 부스러기를 지켰어요!";
         public const string MessageCrumbsLostFormat = "빵 부스러기 {0}개를 떨어뜨렸어요";

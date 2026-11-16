@@ -35,7 +35,7 @@ namespace PetitParis.EditorTools
         static readonly Vector3 CheeseGoal = new Vector3(-4.45f, 0.9f, 20.3f);
         /// <summary>식탁 위 큰 치즈 바퀴(충돌체 있음)의 바닥 중심. 도착 구역도 이 점을 중심으로 둔다.</summary>
         static readonly Vector3 GoalWheelCenter = CheeseGoal + new Vector3(-0.25f, 0f, 0f);
-        const float KitchenFloorTop = 0.003f;
+        const float KitchenFloorTop = 0.005f; // 땅(y 0)보다 5mm 위: 먼 곳 깊이 싸움 방지 (Q2-02)
 
         [MenuItem("PetitParis/3. Build Game Scene (PetitParisVR)", priority = 3)]
         public static void BuildGame()
@@ -49,7 +49,7 @@ namespace PetitParis.EditorTools
             SetupDusk(m);
 
             var env = new GameObject("Environment_Paris").transform;
-            BuildGround(env, p);
+            BuildGround(env, p, m);
             BuildCafe(env, p, m, font);
             BuildBakery(env, p, font);
             BuildEastBuildings(env, p, font);
@@ -148,6 +148,7 @@ namespace PetitParis.EditorTools
             Hint("Hint_Crumbs", hints, new Vector3(-1.95f, 0.2f, -0.85f), PetitParisText.HintCrumbs, font);
             Hint("Hint_Stealth", hints, new Vector3(-1.0f, 0.2f, 1.3f), PetitParisText.HintCrouchStealth, font);
             Hint("Hint_Pallet", hints, new Vector3(-1.0f, 0.2f, 18.9f), PetitParisText.HintPallet, font);
+            Hint("Hint_BroomHide", hints, new Vector3(-0.1f, 0.2f, 18.75f), PetitParisText.HintBroomHide, font);
             Hint("Hint_KitchenDoor", hints, new Vector3(-2.95f, 0.3f, 23.45f), PetitParisText.HintKitchenDoor, font);
             Hint("Hint_KitchenClimb", hints, new Vector3(-2.2f, 0.25f, 22.25f), PetitParisText.HintKitchenClimb, font);
 
@@ -300,21 +301,38 @@ namespace PetitParis.EditorTools
 
         // ───────────────────────── 구역별 파리 거리 (게임 동선은 그대로, 외형만 파리풍) ─────────────────────────
 
-        static void BuildGround(Transform env, Palette p)
+        static void BuildGround(Transform env, Palette p, MaterialLibrary m)
         {
             var g = Group("Ground", env);
             TexBoxXZ("Ground_Cobblestone", g, -8f, 8f, -2f, 25.9f, -0.1f, 0f, p.cobble, 0.9f);
             Paving("Paving_Terrace", g, -3f, 0.8f, -1f, 7f, p.slabsWarm, 1.2f);
             Paving("Paving_Bakery", g, -3f, 0.8f, 7f, 13.3f, p.slabs, 1.2f);
             Paving("Paving_Road", g, 0.8f, 4f, -1f, 13.3f, p.cobbleDark, 0.9f);
-            Paving("Paving_Alley", g, -1.7f, 0.7f, 13.3f, 23f, p.cobble, 0.8f);
-            Paving("Paving_BikeLane", g, -7.6f, 7.6f, 16.4f, 17.6f, p.asphalt, 2f);
+            // 골목 포석은 자전거 길(z 16.4~17.6)을 비우고 둘로 나눈다. 전에는 두 판이 같은 높이로 겹쳐
+            // Quest 2에서 깊이 싸움(z-fighting)으로 톱니 무늬·검은 띠가 보였다 (Q2-02)
+            Paving("Paving_Alley_South", g, -1.7f, 0.7f, 13.3f, 16.4f, p.cobble, 0.8f);
+            Paving("Paving_Alley_North", g, -1.7f, 0.7f, 17.6f, 23f, p.cobble, 0.8f);
+            BikeLane(g, m);
             Paving("Paving_Quai", g, -4f, 4.4f, 23f, 25.9f, p.slabsWarm, 1.5f);
             // 보도 경계석 (높이 1.5cm, 걸어서 넘을 수 있음)
             Paving("Curb_Terrace", g, 0.78f, 0.9f, -1f, 13.3f, p.trim, 0.6f, 0.015f);
         }
 
-        static void Paving(string name, Transform parent, float x0, float x1, float z0, float z1, Material mat, float tile, float height = 0.003f)
+        /// <summary>
+        /// 자전거 길: 밝은 회색 아스팔트(Simple Lit, 질감 하나) + 흰 가장자리 선. 다른 바닥판과 겹치지 않고 조금 높다 (Q2-02).
+        /// </summary>
+        static void BikeLane(Transform g, MaterialLibrary m)
+        {
+            var lane = m.LitTex("PP_BikeLaneTex", PetitParisTextures.BikeLane(), Color.white);
+            Paving("Paving_BikeLane", g, -7.6f, 7.6f, 16.4f, 17.6f, lane, 2f, 0.007f);
+            var paint = m.Lit("PP_LanePaint", new Color(0.92f, 0.9f, 0.84f));
+            foreach (float z in new[] { 16.47f, 17.53f })
+                for (float x = -7.4f; x < 7.4f; x += 0.8f) // 점선 (길이 0.5m, 간격 0.3m)
+                    TexBoxXZ("LaneLine", g, x, x + 0.5f, z - 0.03f, z + 0.03f, 0.007f, 0.009f, paint, 1f, false);
+        }
+
+        // 바닥판 두께 5mm: 땅(y 0)과의 높이 차를 키워 먼 곳의 깊이 싸움을 줄인다 (쥐 stepOffset 2cm라 걸음에 영향 없음)
+        static void Paving(string name, Transform parent, float x0, float x1, float z0, float z1, Material mat, float tile, float height = 0.005f)
         {
             TexBoxXZ(name, parent, x0, x1, z0, z1, 0f, height, mat, tile, height >= 0.01f);
         }
@@ -505,14 +523,15 @@ namespace PetitParis.EditorTools
             SafeZone("SafeZone_UnderPallet", pallet, new Vector3(-0.13f, 0.08f, 0f), new Vector3(0.18f, 0.16f, 0.5f), "팔레트 밑", false, m);
             SafeZone("SafeZone_UnderPallet2", pallet, new Vector3(0.13f, 0.08f, 0f), new Vector3(0.18f, 0.16f, 0.5f), "팔레트 밑", false, m);
 
-            var box = Group("CardboardBox_Alley", props);
-            box.localPosition = new Vector3(0.4f, 0f, 22.5f);
             var card = m.Lit("PP_Cardboard", new Color(0.72f, 0.55f, 0.36f));
-            Box("Top", box, new Vector3(0f, 0.31f, 0f), new Vector3(0.45f, 0.02f, 0.4f), card);
-            Box("Back", box, new Vector3(0.215f, 0.16f, 0f), new Vector3(0.02f, 0.32f, 0.4f), card);
-            Box("SideN", box, new Vector3(0f, 0.16f, 0.19f), new Vector3(0.45f, 0.32f, 0.02f), card);
-            Box("SideS", box, new Vector3(0f, 0.16f, -0.19f), new Vector3(0.45f, 0.32f, 0.02f), card);
-            SafeZone("SafeZone_InBox", box, new Vector3(0.02f, 0.14f, 0f), new Vector3(0.36f, 0.28f, 0.32f), "종이 상자 안", false, m);
+            HideBox("CardboardBox_Alley", props, new Vector3(0.4f, 0f, 22.5f), 0f, new Vector3(0.45f, 0.32f, 0.4f), card, "종이 상자 안", m);
+            // 빗자루 추격 구간(z 18.6~23) 숨을 곳 추가 (Q2-03): 양쪽 벽을 번갈아 1~1.5m 간격.
+            // 입구는 골목 가운데(안내 경로 x -0.5) 쪽을 향해, 쫓기면서 옆으로 질주해 들어갈 수 있다.
+            // 숨는 곳 사이 길은 열려 있어 웨이터 동선을 읽고 다음 곳으로 옮겨 가야 한다.
+            var wine = m.LitTex("PP_WineCrate", PetitParisTextures.Wood(), new Color(0.72f, 0.45f, 0.32f));
+            HideBox("WineCrate_Alley_E", props, new Vector3(0.42f, 0f, 19.05f), 0f, new Vector3(0.42f, 0.26f, 0.36f), wine, "와인 상자 안", m);
+            var wicker = m.LitTex("PP_BreadBasket", PetitParisTextures.Rattan(), new Color(0.95f, 0.8f, 0.55f));
+            HideBox("BreadBasket_Alley_W", props, new Vector3(-1.38f, 0f, 21.05f), 180f, new Vector3(0.4f, 0.24f, 0.38f), wicker, "빵 바구니 밑", m);
 
             Crate("Crate_A2", props, new Vector3(-1.45f, 0f, 20.0f), Vector3.one * 0.35f, 0f, m);
             Crate("Crate_A3", props, new Vector3(-1.45f, 0.35f, 20.0f), Vector3.one * 0.3f, 15f, m);
@@ -735,6 +754,25 @@ namespace PetitParis.EditorTools
             sign.transform.rotation = Quaternion.LookRotation(Vector3.back); // 강변(북쪽)에서 읽힘
             RemoveCollider(Sphere("DoorLamp", door, new Vector3(doorX1 + 0.35f, doorTop + 0.2f, z1 + 0.15f), 0.18f, p.lampGlow));
             Crate("Crate_Door", door, new Vector3(doorX1 + 0.5f, 0f, z1 + 0.3f), Vector3.one * 0.35f, 8f, m);
+        }
+
+        /// <summary>
+        /// 옆으로 눕힌 상자 (윗면·뒷면·양옆, 한쪽이 열림) + 안쪽 안전 구역. yaw 0이면 +X(동쪽)가 막히고 -X(서쪽)가 열린다.
+        /// size = (깊이 x, 높이 y, 폭 z). 안쪽 높이는 쥐 키(약 13cm)보다 커야 한다.
+        /// </summary>
+        static void HideBox(string name, Transform parent, Vector3 position, float yaw, Vector3 size, Material mat, string zoneName, MaterialLibrary m)
+        {
+            var box = Group(name, parent);
+            box.localPosition = position;
+            box.localRotation = Quaternion.Euler(0f, yaw, 0f);
+            const float t = 0.02f;
+            Box("Top", box, new Vector3(0f, size.y - t * 0.5f, 0f), new Vector3(size.x, t, size.z), mat);
+            Box("Back", box, new Vector3(size.x * 0.5f - t * 0.5f, size.y * 0.5f, 0f), new Vector3(t, size.y, size.z), mat);
+            Box("SideN", box, new Vector3(0f, size.y * 0.5f, size.z * 0.5f - t * 0.5f), new Vector3(size.x, size.y, t), mat);
+            Box("SideS", box, new Vector3(0f, size.y * 0.5f, -size.z * 0.5f + t * 0.5f), new Vector3(size.x, size.y, t), mat);
+            float innerH = size.y - t;
+            SafeZone("SafeZone_" + name, box, new Vector3(-0.03f, innerH * 0.5f, 0f),
+                new Vector3(size.x - 0.1f, innerH - 0.02f, size.z - t * 2f - 0.04f), zoneName, false, m);
         }
 
         static RatHintSign Hint(string name, Transform parent, Vector3 position, string text, TMP_FontAsset font)

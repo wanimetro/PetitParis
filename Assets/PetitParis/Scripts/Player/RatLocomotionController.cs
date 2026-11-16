@@ -74,6 +74,11 @@ namespace PetitParis
         // XRI 3.3.2의 이동 변환 클래스 (XRI ContinuousMoveProvider와 같은 방식)
         readonly XROriginMovement translation = new XROriginMovement();
 
+        [Tooltip("스틱을 놓은 뒤 이 시간(초)이 지나면 스틱 누르기로 켠 달리기가 꺼진다.")]
+        [SerializeField, Range(0.1f, 2f)] float runLatchReleaseTime = 0.4f;
+
+        bool runLatched;
+        float idleTime;
         Vector3 planarVelocity;
         float verticalVelocity;
         float lastGroundedTime = -10f;
@@ -92,6 +97,10 @@ namespace PetitParis
         public bool IsSuspended => suspended;
         public Vector2 LastStick { get; private set; }
         public bool IsRunning { get; private set; }
+        /// <summary>왼쪽 스틱 누르기로 켠 달리기 상태.</summary>
+        public bool IsRunLatched => runLatched;
+        /// <summary>왼쪽 스틱 누르기로 달리기를 켜거나 껐을 때 (진동 피드백).</summary>
+        public event System.Action<bool> RunToggled;
         /// <summary>마지막으로 땅에 닿은 뒤 지난 시간(초). 땅에 있으면 0.</summary>
         public float TimeAirborne { get; private set; }
 
@@ -165,7 +174,9 @@ namespace PetitParis
             LastStick = stick;
             GetYawBasis(up, out Vector3 forward, out Vector3 right);
             Vector3 wishDirection = forward * stick.y + right * stick.x;   // 크기 0~1 = 스틱 세기
-            bool running = !inputLocked && input.RunHeld && (comfort == null || comfort.enableRun) && (crouch == null || !crouch.IsCrouched);
+            // 달리기: 왼손 그립 누르고 있기, 또는 왼쪽 스틱 누르기(한 번 누르면 켜지고, 멈추거나 다시 누르면 꺼짐) (Q2-01)
+            UpdateRunLatch(stick, dt);
+            bool running = !inputLocked && (input.RunHeld || runLatched) && (comfort == null || comfort.enableRun) && (crouch == null || !crouch.IsCrouched);
             IsRunning = running && stick.sqrMagnitude > 0.01f;
             float walkSpeed = rig.Config.walkSpeed * (crouch != null ? crouch.SpeedMultiplier : 1f) * (running ? runMultiplier : 1f)
                               * (comfort != null ? comfort.EffectiveSpeedMultiplier : 1f);
@@ -175,7 +186,7 @@ namespace PetitParis
             bool dashing = false;
             if (dash != null)
             {
-                dash.Tick(inputLocked ? Vector3.zero : wishDirection, planarVelocity, grounded, crouch, dt);
+                dash.Tick(inputLocked ? Vector3.zero : wishDirection, inputLocked ? Vector3.zero : forward, planarVelocity, grounded, crouch, dt);
                 if (dash.IsDashing)
                 {
                     Vector3 dashVelocity = dash.CurrentVelocity;
@@ -236,6 +247,22 @@ namespace PetitParis
                 translation.motion = displacement;
                 TryQueueTransformation(translation);
             }
+        }
+
+        void UpdateRunLatch(Vector2 stick, float dt)
+        {
+            if (inputLocked || (crouch != null && crouch.IsCrouched)) { SetRunLatched(false); return; }
+            if (input.RunTogglePressedThisFrame) SetRunLatched(!runLatched);
+            // 스틱을 놓고 잠시 지나면 자동으로 꺼진다 (다음에 걸을 때 갑자기 달리지 않게)
+            idleTime = stick.sqrMagnitude < 0.01f ? idleTime + dt : 0f;
+            if (runLatched && idleTime > runLatchReleaseTime) SetRunLatched(false);
+        }
+
+        void SetRunLatched(bool value)
+        {
+            if (runLatched == value) return;
+            runLatched = value;
+            RunToggled?.Invoke(value);
         }
 
         Vector2 ApplyDeadzone(Vector2 raw)

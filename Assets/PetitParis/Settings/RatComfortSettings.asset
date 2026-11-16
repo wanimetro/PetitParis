@@ -12,12 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5154cc5532fa456ebc125202f991a0cb, type: 3}
   m_Name: RatComfortSettings
   m_EditorClassIdentifier: PetitParis.Runtime::PetitParis.RatComfortSettings
+  settingsVersion: 2
   snapTurnDegrees: 30
   snapTurnDebounce: 0.5
   enableDash: 1
+  enableRun: 1
   enableJump: 1
   vignetteOnDash: 1
+  vignetteOnRun: 1
   vignetteOnWalk: 0
-  vignetteInAir: 0
+  vignetteInAir: 1
   limitSpeed: 1
-  maxPerceivedSpeed: 5
+  maxPerceivedSpeed: 6.5
+  comfortSpeedMultiplier: 0.7
+  comfortMaxPerceivedSpeed: 3.5
+  comfortDisableJump: 1
+  comfortVignetteOnWalk: 1

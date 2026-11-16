@@ -323,7 +323,10 @@ namespace PetitParis.EditorTools
             if (hasGeneral)
             {
                 string text = System.IO.File.ReadAllText(XrGeneralSettingsPath);
-                report.Check(text.Contains("OpenXRLoader"), "Android XR 로더 = OpenXR",
+                // 로더는 이름이 아니라 GUID로 참조되므로 OpenXRLoader 에셋의 GUID도 확인한다
+                bool hasLoader = text.Contains("OpenXRLoader") ||
+                    AssetDatabase.FindAssets("t:OpenXRLoader").Any(g => text.Contains(g));
+                report.Check(hasLoader, "Android XR 로더 = OpenXR",
                     "XR 로더 설정에 OpenXR이 없습니다: XR Plug-in Management > Android 탭에서 OpenXR을 체크하세요.");
             }
 

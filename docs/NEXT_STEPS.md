@@ -9,6 +9,14 @@
 - 아트: 파리 느낌에 맞는 무료 에셋을 찾는다. 레포는 **Private**으로 바꾼다 (Asset Store 등 재배포 금지 에셋을 넣기 위해). Quest 3 최적화를 함께 한다.
 - 재미 요소: **빵 부스러기 수집 + 점수**, **추격·긴박한 이벤트**, **마지막 구간은 식당 주방**
 
+## 0-1. 2026-11-16 AI 리뷰 이슈 수정 + Quest 2 준비
+`docs/QUEST2_ISSUE_RESOLUTION.md` 참고 (수정 내역, 상태, Quest 2 빌드 순서와 체크리스트). 모두 Unity Play·실기기 **미검증**.
+- 로컬 세션 첫 작업: 메뉴 3번(씬 재생성) → 4번(Validate) → Play로 그 문서 4절 항목 확인
+- 자동 테스트(순간이동)는 `PetitParisGameFlow.CloseIntro()`를 먼저 호출한다 (시작 안내가 A를 누를 때까지 이동을 잠근다)
+- OpenXR·XR Management는 manifest에 없다 → 그 문서 6-1절대로 에디터에서 설치하고 생긴 파일을 커밋
+- Quest 2는 OpenXR **Oculus Touch Controller Profile**이 필요하다 (Touch Plus는 Quest 3용)
+- URP 후처리(Volume)는 Quest 2에서 비용이 크다. 조명 작업에서 쓰면 Android에서는 끄거나 최소화
+
 ## 1. 로컬 작업 환경 만들기 (사용자가 한 번만)
 1. GitHub에서 PetitParis 레포를 **Private**으로 바꾼다: Settings → General → Danger Zone → Change repository visibility → Private
 2. PC에 **uv**를 설치한다 (Unity MCP 서버가 Python 3.10+를 uv로 실행). PowerShell:

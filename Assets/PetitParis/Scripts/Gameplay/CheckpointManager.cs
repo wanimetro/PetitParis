@@ -107,15 +107,29 @@ namespace PetitParis
             return best;
         }
 
-        /// <summary>아직 도달하지 않은 다음 체크포인트 (순서대로). 모두 도달했으면 null.</summary>
+        /// <summary>
+        /// 다음 체크포인트: 지금까지 도달한 것 중 가장 앞(인덱스가 큰) 체크포인트보다 뒤에 있는, 아직 도달하지 않은 첫 체크포인트.
+        /// 하나를 건너뛰어도 지나온 쪽으로 되돌아가라고 안내하지 않는다 (AI 리뷰 ISSUE-10). 모두 지났으면 null(→ 목적지).
+        /// </summary>
         public Transform NextTarget
         {
             get
             {
                 if (reached == null) return null;
-                for (int i = 0; i < Count; i++)
+                for (int i = HighestReachedIndex + 1; i < Count; i++)
                     if (!reached[i] && checkpoints[i] != null) return checkpoints[i];
                 return null;
+            }
+        }
+
+        /// <summary>도달한 체크포인트 중 가장 큰 인덱스 (시작 = 0).</summary>
+        public int HighestReachedIndex
+        {
+            get
+            {
+                if (reached == null) return 0;
+                for (int i = Count - 1; i >= 0; i--) if (reached[i]) return i;
+                return 0;
             }
         }
 

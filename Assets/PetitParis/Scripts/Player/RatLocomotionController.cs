@@ -43,7 +43,8 @@ namespace PetitParis
         [Tooltip("감속 (월드 m/s²). 스틱을 놓았을 때 부드럽게 멈춘다.")]
         [SerializeField, Range(0.05f, 5f)] float deceleration = 1.8f;
 
-        [Tooltip("달리기(왼손 그립 / 왼쪽 Shift)를 누르고 있을 때 걷기 속도 배율. RatComfortSettings 체감 속도 상한도 함께 적용된다.")]
+        [Tooltip("달리기(왼손 그립 / 왼쪽 Shift)를 누르고 있을 때 걷기 속도 배율. RatComfortSettings 체감 속도 상한도 함께 적용된다.\n" +
+                 "기본값: 걷기 0.2 → 달리기 0.36, 질주 0.6 (월드 m/s). 질주가 달리기보다 확실히 빠르게.")]
         [SerializeField, Range(1f, 3f)] float runMultiplier = 1.8f;
 
         [Tooltip("공중에서의 조작 비율.")]
@@ -73,6 +74,11 @@ namespace PetitParis
         // XRI 3.3.2의 이동 변환 클래스 (XRI ContinuousMoveProvider와 같은 방식)
         readonly XROriginMovement translation = new XROriginMovement();
 
+        [Tooltip("스틱을 놓은 뒤 이 시간(초)이 지나면 스틱 누르기로 켠 달리기가 꺼진다.")]
+        [SerializeField, Range(0.1f, 2f)] float runLatchReleaseTime = 0.4f;
+
+        bool runLatched;
+        float idleTime;
         Vector3 planarVelocity;
         float verticalVelocity;
         float lastGroundedTime = -10f;
@@ -91,6 +97,12 @@ namespace PetitParis
         public bool IsSuspended => suspended;
         public Vector2 LastStick { get; private set; }
         public bool IsRunning { get; private set; }
+        /// <summary>왼쪽 스틱 누르기로 켠 달리기 상태.</summary>
+        public bool IsRunLatched => runLatched;
+        /// <summary>왼쪽 스틱 누르기로 달리기를 켜거나 껐을 때 (진동 피드백).</summary>
+        public event System.Action<bool> RunToggled;
+        /// <summary>마지막으로 땅에 닿은 뒤 지난 시간(초). 땅에 있으면 0.</summary>
+        public float TimeAirborne { get; private set; }
 
         /// <summary>플레이어 체감 기준 중력 (월드 m/s²).</summary>
         public float GravityMagnitude
@@ -155,22 +167,26 @@ namespace PetitParis
             Vector3 up = origin.up;
             bool grounded = body.isGrounded;
             if (grounded) lastGroundedTime = Time.time;
+            TimeAirborne = grounded ? 0f : Time.time - lastGroundedTime;
 
             // ── 1. 스틱 → 목표 수평 속도 (카메라 Yaw 기준) ──
             Vector2 stick = inputLocked ? Vector2.zero : ApplyDeadzone(input.Move);
             LastStick = stick;
             GetYawBasis(up, out Vector3 forward, out Vector3 right);
             Vector3 wishDirection = forward * stick.y + right * stick.x;   // 크기 0~1 = 스틱 세기
-            bool running = !inputLocked && input.RunHeld && (comfort == null || comfort.enableRun) && (crouch == null || !crouch.IsCrouched);
+            // 달리기: 왼손 그립 누르고 있기, 또는 왼쪽 스틱 누르기(한 번 누르면 켜지고, 멈추거나 다시 누르면 꺼짐) (Q2-01)
+            UpdateRunLatch(stick, dt);
+            bool running = !inputLocked && (input.RunHeld || runLatched) && (comfort == null || comfort.enableRun) && (crouch == null || !crouch.IsCrouched);
             IsRunning = running && stick.sqrMagnitude > 0.01f;
-            float walkSpeed = rig.Config.walkSpeed * (crouch != null ? crouch.SpeedMultiplier : 1f) * (running ? runMultiplier : 1f);
+            float walkSpeed = rig.Config.walkSpeed * (crouch != null ? crouch.SpeedMultiplier : 1f) * (running ? runMultiplier : 1f)
+                              * (comfort != null ? comfort.EffectiveSpeedMultiplier : 1f);
             Vector3 targetPlanar = wishDirection * walkSpeed;
 
             // ── 2. 질주 (방향은 시작할 때 고정, 속도 곡선은 RatDashController가 계산) ──
             bool dashing = false;
             if (dash != null)
             {
-                dash.Tick(inputLocked ? Vector3.zero : wishDirection, planarVelocity, grounded, crouch, dt);
+                dash.Tick(inputLocked ? Vector3.zero : wishDirection, inputLocked ? Vector3.zero : forward, planarVelocity, grounded, crouch, dt);
                 if (dash.IsDashing)
                 {
                     Vector3 dashVelocity = dash.CurrentVelocity;
@@ -199,7 +215,7 @@ namespace PetitParis
             // 체감 속도 상한
             if (comfort != null && comfort.limitSpeed)
             {
-                float maxWorld = comfort.maxPerceivedSpeed * rig.Config.trackingScale;
+                float maxWorld = comfort.EffectiveMaxPerceivedSpeed * rig.Config.trackingScale;
                 if (planarVelocity.magnitude > maxWorld) planarVelocity = planarVelocity.normalized * maxWorld;
             }
 
@@ -231,6 +247,22 @@ namespace PetitParis
                 translation.motion = displacement;
                 TryQueueTransformation(translation);
             }
+        }
+
+        void UpdateRunLatch(Vector2 stick, float dt)
+        {
+            if (inputLocked || (crouch != null && crouch.IsCrouched)) { SetRunLatched(false); return; }
+            if (input.RunTogglePressedThisFrame) SetRunLatched(!runLatched);
+            // 스틱을 놓고 잠시 지나면 자동으로 꺼진다 (다음에 걸을 때 갑자기 달리지 않게)
+            idleTime = stick.sqrMagnitude < 0.01f ? idleTime + dt : 0f;
+            if (runLatched && idleTime > runLatchReleaseTime) SetRunLatched(false);
+        }
+
+        void SetRunLatched(bool value)
+        {
+            if (runLatched == value) return;
+            runLatched = value;
+            RunToggled?.Invoke(value);
         }
 
         Vector2 ApplyDeadzone(Vector2 raw)

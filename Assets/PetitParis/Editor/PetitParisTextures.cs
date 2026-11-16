@@ -22,6 +22,8 @@ namespace PetitParis.EditorTools
         public static Texture2D Cobblestone() => Make("PP_Cobblestone", 512, CobblePixel);
         public static Texture2D SidewalkSlabs() => Make("PP_SidewalkSlabs", 256, SlabPixel);
         public static Texture2D Asphalt() => Make("PP_Asphalt", 256, (u, v) => Tint(new Color(0.2f, 0.2f, 0.22f), 0.85f + 0.3f * Fbm(u, v, 16, 4, 7)));
+        /// <summary>자전거 길: 밝은 회색 아스팔트 (어두운 Asphalt는 Quest 2에서 거의 검게 보였다, Q2-02). 대비가 약해 멀리서도 뭉개지지 않는다.</summary>
+        public static Texture2D BikeLane() => Make("PP_BikeLane", 256, (u, v) => Tint(new Color(0.52f, 0.5f, 0.5f), 0.9f + 0.18f * Fbm(u, v, 16, 4, 9)));
         public static Texture2D Limestone() => Make("PP_Limestone", 256, (u, v) => AshlarPixel(u, v, 4, 2, new Color(0.88f, 0.82f, 0.7f), 11));
         public static Texture2D LimestoneRustic() => Make("PP_LimestoneRustic", 256, (u, v) => AshlarPixel(u, v, 3, 2, new Color(0.8f, 0.74f, 0.62f), 13, 0.03f));
         public static Texture2D Plaster(string name, Color baseColor, int seed) => Make(name, 256, (u, v) => PlasterPixel(u, v, baseColor, seed));

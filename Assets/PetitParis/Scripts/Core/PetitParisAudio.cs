@@ -11,7 +11,20 @@ namespace PetitParis
         const int Rate = 22050;
 
         static AudioClip footstep, bikeRoll, bikeBell, chime, fail, success;
-        static AudioClip pickup, goldPickup, alert, whoosh, thud, flutter, chaseLoop, broom;
+        static AudioClip pickup, goldPickup, alert, whoosh, thud, flutter, chaseLoop, broom, cityAmbience, musetteLoop;
+
+        /// <summary>거리 배경음 (먼 차·사람 웅성임 + 가끔 컵 부딪히는 소리, 8초 루프).</summary>
+        public static AudioClip CityAmbience => cityAmbience != null ? cityAmbience : cityAmbience = MakeCityAmbience();
+
+        /// <summary>배경 음악: 아코디언 느낌의 3/4박자 왈츠 (자체 작곡, 8마디 루프).</summary>
+        public static AudioClip MusetteLoop => musetteLoop != null ? musetteLoop : musetteLoop = MakeMusette();
+
+        /// <summary>
+        /// 3D 소리 크기 거리 배율. 월드는 실제 미터인데 쥐는 사람보다 훨씬 낮은 곳에서 듣는다.
+        /// 실제 거리 그대로 줄이면 2~4m 떨어진 발소리·자전거가 거의 안 들려서 (Quest 2 테스트 Q2-04),
+        /// 소리가 줄어들기 시작하는 거리(minDistance)를 3배로 넓힌다.
+        /// </summary>
+        public const float Loudness3D = 3f;
 
         /// <summary>빵 부스러기 줍기 (짧고 밝은 소리).</summary>
         public static AudioClip Pickup => pickup != null ? pickup : pickup = MakePickup();
@@ -62,8 +75,8 @@ namespace PetitParis
             source.playOnAwake = false;
             source.spatialBlend = 1f;          // 완전 3D: 방향과 거리에 따라 좌우·크기가 바뀐다
             source.rolloffMode = AudioRolloffMode.Logarithmic;
-            source.minDistance = minDistance;
-            source.maxDistance = maxDistance;
+            source.minDistance = minDistance * Loudness3D;
+            source.maxDistance = Mathf.Max(maxDistance * 1.5f, source.minDistance * 2f);
             source.dopplerLevel = 0f;          // 빠른 자전거의 피치 왜곡 방지
             source.spread = 0f;
         }
@@ -358,6 +371,116 @@ namespace PetitParis
                 d[n - 1 - i] *= k;
             }
             return Create("pp_broom", d);
+        }
+
+        static AudioClip MakeCityAmbience()
+        {
+            var rng = new System.Random(53);
+            const float seconds = 8f;
+            int n = (int)(seconds * Rate);
+            var d = new float[n];
+            float brown = 0f, murmur = 0f, murmur2 = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float white = (float)(rng.NextDouble() * 2.0 - 1.0);
+                brown = Mathf.Clamp(brown * 0.998f + white * 0.02f, -1f, 1f);   // 먼 차 소리 (낮은 웅웅)
+                murmur += (white - murmur) * 0.08f;                              // 사람 웅성임 (중간 대역)
+                murmur2 += (murmur - murmur2) * 0.08f;
+                float t = i / (float)Rate;
+                float swell = 0.6f + 0.4f * Mathf.Sin(t * 0.9f) * Mathf.Sin(t * 0.37f + 1f);
+                d[i] = brown * 0.9f + (murmur - murmur2) * 0.9f * swell;
+            }
+            // 카페 컵·접시 부딪히는 소리 (짧은 높은 음)
+            float at = 0.7f;
+            while (at < seconds - 0.4f)
+            {
+                float freq = 2400f + (float)rng.NextDouble() * 1500f;
+                int start = (int)(at * Rate);
+                for (int k = 0; k < Rate / 4 && start + k < n; k++)
+                {
+                    float tt = k / (float)Rate;
+                    d[start + k] += 0.25f * Mathf.Sin(2f * Mathf.PI * freq * tt) * Mathf.Exp(-tt * 30f);
+                }
+                at += 1.2f + (float)rng.NextDouble() * 2f;
+            }
+            // 루프 이음매: 앞뒤 0.5초 교차
+            int fade = Rate / 2;
+            for (int i = 0; i < fade; i++)
+            {
+                float k = i / (float)fade;
+                d[i] = d[i] * k + d[n - fade + i] * (1f - k);
+            }
+            System.Array.Resize(ref d, n - fade);
+            return Create("pp_city_ambience", d);
+        }
+
+        /// <summary>
+        /// 아코디언 왈츠 (C장조, 3/4박자, 템포 150, 8마디). 멜로디와 화음 진행은 이 프로젝트를 위해 새로 만든 것이다.
+        /// 음색: 살짝 어긋나게 조율한 톱니파 두 개 (뮤제트 아코디언 특유의 떨림) + 부드러운 저역 통과.
+        /// 반주: 1박 베이스 "쿵", 2·3박 화음 "짝짝".
+        /// </summary>
+        static AudioClip MakeMusette()
+        {
+            const float bpm = 150f;
+            float beat = 60f / bpm;
+            // 멜로디 (MIDI 음, 박 단위 길이)
+            int[] mNotes = { 76, 79, 77, 76, 74, 76, 72, 74, 77, 81, 79, 77, 76, 74, 76, 77, 76 };
+            float[] mBeats = { 2, 1, 1, 1, 1, 2, 1, 3, 2, 1, 1, 1, 1, 1, 1, 1, 3 };
+            // 마디별 화음 (근음, 3음, 5음 / 7음)
+            int[][] chords =
+            {
+                new[] { 48, 64, 67 }, new[] { 43, 65, 71 }, new[] { 48, 64, 67 }, new[] { 43, 62, 67 },
+                new[] { 50, 65, 69 }, new[] { 48, 64, 67 }, new[] { 43, 65, 71 }, new[] { 48, 64, 67 },
+            };
+            int bars = chords.Length;
+            int n = Mathf.RoundToInt(bars * 3 * beat * Rate);
+            var d = new float[n];
+
+            void Note(int midi, float start, float length, float gain, bool accordion)
+            {
+                float f = 440f * Mathf.Pow(2f, (midi - 69) / 12f);
+                int s0 = Mathf.RoundToInt(start * Rate);
+                int len = Mathf.RoundToInt(length * Rate);
+                float p1 = 0f, p2 = 0f, lp = 0f;
+                for (int k = 0; k < len && s0 + k < n; k++)
+                {
+                    float tt = k / (float)Rate;
+                    float env = Mathf.Clamp01(tt / 0.02f) * Mathf.Clamp01((length - tt) / 0.06f);
+                    float v;
+                    if (accordion)
+                    {
+                        p1 += f / Rate; p2 += f * 1.0035f / Rate;              // 약 6센트 어긋남 → 뮤제트 떨림
+                        v = (p1 % 1f - 0.5f) + (p2 % 1f - 0.5f);
+                    }
+                    else
+                    {
+                        p1 += f / Rate;
+                        v = Mathf.Sin(2f * Mathf.PI * p1) + 0.3f * Mathf.Sin(4f * Mathf.PI * p1);
+                        env *= Mathf.Exp(-tt * 4f);
+                    }
+                    lp += (v - lp) * 0.25f;                                     // 날카로움 줄이기
+                    d[s0 + k] += lp * env * gain;
+                }
+            }
+
+            float time = 0f;
+            for (int i = 0; i < mNotes.Length; i++)
+            {
+                Note(mNotes[i], time, mBeats[i] * beat * 0.95f, 0.35f, true);
+                time += mBeats[i] * beat;
+            }
+            for (int b = 0; b < bars; b++)
+            {
+                float bar = b * 3 * beat;
+                var c = chords[b];
+                Note(c[0], bar, beat * 0.8f, 0.5f, false);                     // 쿵
+                for (int k = 1; k <= 2; k++)
+                {
+                    Note(c[1], bar + k * beat, beat * 0.45f, 0.12f, true);      // 짝
+                    Note(c[2], bar + k * beat, beat * 0.45f, 0.12f, true);
+                }
+            }
+            return Create("pp_musette", d);
         }
 
         static void Normalize(float[] data, float peak)

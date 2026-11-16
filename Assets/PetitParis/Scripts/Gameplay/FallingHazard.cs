@@ -237,7 +237,7 @@ namespace PetitParis
                 dropsThisVisit++;
                 if (!messageShown && gameFlow != null)
                 {
-                    gameFlow.PostMessage(firstMessage);
+                    gameFlow.PostMessage(firstMessage, 1);
                     messageShown = true;
                 }
                 return;
@@ -292,8 +292,7 @@ namespace PetitParis
                     float d = DistanceToRat(item);
                     if (d <= 0f && CanKillRat())
                     {
-                        respawn.Kill("바게트");
-                        if (gameFlow != null) gameFlow.PostMessage(PetitParisText.MessageBaguetteHit); // 기본 "밟힐 뻔했어요" 대신
+                        respawn.Kill(PetitParisText.HazardBaguette); // 메시지는 PetitParisGameFlow가 원인별로 보여준다
                         break;
                     }
 

@@ -24,6 +24,7 @@ namespace PetitParis
         [SerializeField] CheckpointManager checkpoints;
         [SerializeField] RatDangerDetector danger;
         [SerializeField] AudioSource sfx;
+        [SerializeField] RatFallRecovery fallRecovery;
 
         [Header("전환 시간(초)")]
         [SerializeField, Range(0.05f, 1f)] float fadeOutTime = 0.25f;
@@ -31,7 +32,7 @@ namespace PetitParis
         [SerializeField, Range(0.05f, 1f)] float fadeInTime = 0.4f;
 
         [Tooltip("재시작 후 무적 시간(초).")]
-        [SerializeField, Range(0f, 5f)] float invulnerableTime = 1.5f;
+        [SerializeField, Range(0f, 5f)] float invulnerableTime = 2.5f; // 리스폰 직후 사람도 알아채지 않는다 (PedestrianAwareness, ISSUE-17)
 
         [Tooltip("이 높이(월드 Y)보다 떨어지면 실패 처리.")]
         [SerializeField] float killHeight = -1f;
@@ -56,6 +57,7 @@ namespace PetitParis
             if (calibrator == null) calibrator = GetComponent<RatEyeCalibrator>();
             if (fader == null) fader = GetComponentInChildren<ScreenFader>(true);
             if (danger == null) danger = GetComponent<RatDangerDetector>();
+            if (fallRecovery == null) fallRecovery = GetComponent<RatFallRecovery>();
             if (checkpoints == null) checkpoints = FindAnyObjectByType<CheckpointManager>();
             if (sfx != null) PetitParisAudio.Configure2D(sfx);
         }
@@ -70,12 +72,16 @@ namespace PetitParis
         public void Kill(string reason)
         {
             if (IsRespawning || IsInvulnerable || !isActiveAndEnabled) return;
+            if (fallRecovery != null && fallRecovery.IsRecovering) return; // 낙하 복귀(페이드) 중에는 실패 처리하지 않는다
             StartCoroutine(RespawnRoutine(reason));
         }
 
         IEnumerator RespawnRoutine(string reason)
         {
             IsRespawning = true;
+            // 시점 맞추기(캘리브레이션 페이드)가 진행 중이면 끝난 뒤 시작한다 → 두 페이드가 서로 덮지 않게 (ISSUE-12)
+            float waitUntil = Time.unscaledTime + 1.5f;
+            while (calibrator != null && calibrator.IsCalibrating && Time.unscaledTime < waitUntil) yield return null;
             DeathCount++;
             LastReason = reason;
             Died?.Invoke(reason);

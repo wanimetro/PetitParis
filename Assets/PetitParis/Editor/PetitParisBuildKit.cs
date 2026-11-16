@@ -130,6 +130,12 @@ namespace PetitParis.EditorTools
         {
             var config = GetOrCreateAsset<RatScaleConfig>(PetitParisPaths.Config);
             var comfortSettings = GetOrCreateAsset<RatComfortSettings>(PetitParisPaths.Comfort);
+            if (comfortSettings.MigrateToCurrent())
+            {
+                // 이전 에셋: 공중·달리기 비네트 켬, 체감 속도 상한 6.5 (AI 리뷰 ISSUE-02/03/11)
+                EditorUtility.SetDirty(comfortSettings);
+                Debug.Log("[PetitParis] RatComfortSettings를 새 기본값(v" + RatComfortSettings.CurrentVersion + ")으로 옮겼습니다.");
+            }
             var inputAsset = AssetDatabase.LoadAssetAtPath<InputActionAsset>(PetitParisPaths.InputActions);
             if (inputAsset == null) { Fail("입력 에셋이 없습니다: " + PetitParisPaths.InputActions); return null; }
             var refs = LoadActionReferences(PetitParisPaths.InputActions);
@@ -206,6 +212,8 @@ namespace PetitParis.EditorTools
             var desktopLook = root.AddComponent<RatDesktopLook>(); // 헤드셋 추적이 없을 때만 마우스 시점 전환
             parts.danger = root.AddComponent<RatDangerDetector>();
             parts.respawn = root.AddComponent<RatRespawn>();
+            var fallRecovery = root.AddComponent<RatFallRecovery>(); // 큰 낙하 → 페이드 후 올라가던 자리로 (ISSUE-02)
+            var haptics = root.AddComponent<RatHaptics>();          // 컨트롤러 진동 (ISSUE-15)
             var sfx = root.AddComponent<AudioSource>();
             sfx.playOnAwake = false;
             sfx.spatialBlend = 0f;
@@ -260,7 +268,10 @@ namespace PetitParis.EditorTools
                 ("locomotion", parts.locomotion), ("dash", parts.dash));
             Wire(parts.danger, ("rig", parts.scaleRig), ("crouch", parts.crouch), ("respawn", parts.respawn));
             Wire(parts.respawn, ("rig", parts.scaleRig), ("locomotion", parts.locomotion), ("dash", parts.dash), ("jump", parts.jump),
-                ("crouch", parts.crouch), ("calibrator", parts.calibrator), ("fader", parts.fader), ("danger", parts.danger), ("sfx", sfx));
+                ("crouch", parts.crouch), ("calibrator", parts.calibrator), ("fader", parts.fader), ("danger", parts.danger), ("sfx", sfx),
+                ("fallRecovery", fallRecovery));
+            Wire(fallRecovery, ("rig", parts.scaleRig), ("locomotion", parts.locomotion), ("respawn", parts.respawn), ("fader", parts.fader));
+            Wire(haptics, ("danger", parts.danger), ("respawn", parts.respawn), ("fallRecovery", fallRecovery));
             Wire(statusPanel, ("text", statusText), ("danger", parts.danger), ("dash", parts.dash), ("crouch", parts.crouch), ("respawn", parts.respawn));
             Wire(debugPanel, ("text", debugText), ("input", parts.reader), ("calibrator", parts.calibrator), ("rig", parts.scaleRig),
                 ("locomotion", parts.locomotion), ("dash", parts.dash), ("crouch", parts.crouch));
@@ -409,12 +420,30 @@ namespace PetitParis.EditorTools
         }
 
         /// <summary>XRI 샘플의 TunnelingVignette 프리팹을 카메라 아래에 둔다. 없으면 비네트 없이 진행.</summary>
+        /// <summary>
+        /// XRI Starter Assets 샘플의 TunnelingVignette 프리팹을 찾는다. 샘플 버전 폴더(3.3.2, 3.6.1 …)에 묶이지 않도록
+        /// 프로젝트 전체에서 이름으로 찾는다 (AI 리뷰 ISSUE-20). 여러 개면 XR Interaction Toolkit 샘플 폴더의 최신 경로를 쓴다.
+        /// </summary>
+        public static string FindVignettePrefabPath()
+        {
+            string best = null;
+            foreach (var guid in AssetDatabase.FindAssets("TunnelingVignette t:Prefab"))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                if (!path.EndsWith("/TunnelingVignette.prefab")) continue;
+                if (best == null || (path.Contains("XR Interaction Toolkit") && string.CompareOrdinal(path, best) > 0)) best = path;
+            }
+            return best;
+        }
+
         static MonoBehaviour AddComfortVignette(Transform camera)
         {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PetitParisPaths.VignettePrefab);
+            string path = FindVignettePrefabPath();
+            var prefab = path != null ? AssetDatabase.LoadAssetAtPath<GameObject>(path) : null;
             if (prefab == null)
             {
-                Debug.LogWarning("[PetitParis] TunnelingVignette 프리팹이 없어 Comfort Vignette 없이 진행합니다: " + PetitParisPaths.VignettePrefab);
+                Debug.LogWarning("[PetitParis] TunnelingVignette 프리팹이 없어 Comfort Vignette 없이 진행합니다. " +
+                                 "Package Manager > XR Interaction Toolkit > Samples > Starter Assets를 Import 하세요.");
                 return null;
             }
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, camera);
@@ -910,6 +939,45 @@ namespace PetitParis.EditorTools
             textMat.renderQueue = OverlayPanelQueue + 10; // 배경 다음
             EditorUtility.SetDirty(textMat);
             tmp.fontSharedMaterial = textMat;
+        }
+
+        /// <summary>
+        /// 루트 아래 모든 TMP 글자와, 이름이 backgroundNames 중 하나인 판을 깊이 검사 없이 맨 위에 그린다
+        /// (HUD·메뉴용: 바닥·널빤지·벽에 가려지지 않게, AI 리뷰 ISSUE-04).
+        /// 배경 판은 PetitParis/ScreenFade 셰이더(투명, 깊이 검사 없음)에 색·투명도를 넣어 쓴다.
+        /// </summary>
+        public static void MakeOverlayAll(GameObject root, MaterialLibrary m, Color backgroundColor, params string[] backgroundNames)
+        {
+            var fadeShader = Shader.Find(PetitParisPaths.FadeShader);
+            foreach (var name in backgroundNames)
+            {
+                var bg = root.transform.Find(name);
+                var r = bg != null ? bg.GetComponent<MeshRenderer>() : null;
+                if (r == null || fadeShader == null) continue;
+                var mat = m.Custom("PP_" + root.name + "_" + name + "Overlay", fadeShader, backgroundColor);
+                mat.renderQueue = OverlayPanelQueue;
+                r.sharedMaterial = mat;
+            }
+            var overlayShader = Shader.Find("TextMeshPro/Mobile/Distance Field Overlay");
+            foreach (var tmp in root.GetComponentsInChildren<TextMeshPro>(true))
+            {
+                if (overlayShader == null || tmp.fontSharedMaterial == null) continue;
+                string path = $"{PetitParisPaths.Materials}/PP_PanelTextOverlay.mat";
+                var textMat = AssetDatabase.LoadAssetAtPath<Material>(path);
+                if (textMat == null)
+                {
+                    textMat = new Material(tmp.fontSharedMaterial);
+                    AssetDatabase.CreateAsset(textMat, path);
+                }
+                else if (tmp.fontSharedMaterial != textMat)
+                {
+                    textMat.CopyPropertiesFromMaterial(tmp.fontSharedMaterial);
+                }
+                textMat.shader = overlayShader;
+                textMat.renderQueue = OverlayPanelQueue + 10;
+                EditorUtility.SetDirty(textMat);
+                tmp.fontSharedMaterial = textMat;
+            }
         }
 
         public static GameObject RemoveCollider(GameObject go)

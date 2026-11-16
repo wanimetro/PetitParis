@@ -136,6 +136,9 @@ namespace PetitParis
         public void Calibrate()
         {
             if (!isActiveAndEnabled || busy) return;
+            // 리스폰 중이면 리스폰의 페이드 안에서 바로 맞춘다 (페이드를 두 번 겹치지 않게, ISSUE-12)
+            var respawn = GetComponent<RatRespawn>();
+            if (respawn != null && respawn.IsRespawning) { CalibrateImmediate(); return; }
             StartCoroutine(CalibrateRoutine());
         }
 

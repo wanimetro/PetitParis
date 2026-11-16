@@ -188,6 +188,50 @@ namespace PetitParis.EditorTools
                 }
                 report.Check(walkers.Length == 4, "보행자 4명 (웨이터, 빵집 셰프, 빗자루 웨이터, 주방 셰프)", $"보행자가 {walkers.Length}명입니다 (기획: 4명).", warnOnly: true);
 
+                // AI 리뷰 P1 수정 사항 점검
+                var flowSo = flow != null ? new SerializedObject(flow) : null;
+                report.Check(flowSo != null && flowSo.FindProperty("menuPanel")?.objectReferenceValue != null && flowSo.FindProperty("menuText")?.objectReferenceValue != null,
+                    "X/Tab 메뉴(조작법·편안함 모드) 연결 (ISSUE-06)", "GameFlow.menuPanel/menuText가 비어 있습니다 (메뉴 3번으로 다시 생성).", warnOnly: true);
+                var waiterA = walkers.FirstOrDefault(w => w.name == "Pedestrian_A_Waiter");
+                if (waiterA != null)
+                {
+                    float delay = new SerializedObject(waiterA).FindProperty("startDelay")?.floatValue ?? 0f;
+                    report.Check(delay >= 20f, $"시작 구간: 웨이터 A {delay:0}초 뒤 출발 (ISSUE-07)", $"웨이터 A 시작 지연이 {delay:0}초입니다 (20초 이상 권장).", warnOnly: true);
+                }
+                foreach (var a in Object.FindObjectsByType<PedestrianAwareness>(FindObjectsInactive.Include))
+                {
+                    float speed = new SerializedObject(a).FindProperty("chaseSpeed")?.floatValue ?? 0f;
+                    report.Check(speed <= 0.45f, $"{a.name} 추격 속도 {speed:0.00} m/s (쥐 질주 0.6보다 느림, ISSUE-01)",
+                        $"{a.name} 추격 속도 {speed:0.00} m/s — 쥐 질주로 따돌리기 어렵습니다.", warnOnly: true);
+                }
+                var plank = GameObject.Find("Plank_0");
+                if (plank != null)
+                    report.Check(plank.transform.lossyScale.x >= 0.24f, $"주방 널빤지 폭 {plank.transform.lossyScale.x * 100f:0}cm (ISSUE-02)",
+                        "주방 널빤지가 25cm보다 좁습니다.", warnOnly: true);
+                report.Check(checkpoints != null && checkpoints.Count >= 7, $"체크포인트 {checkpoints?.Count ?? 0}개 (주방 2개 포함, ISSUE-19)",
+                    "주방 체크포인트가 없습니다 (메뉴 3번으로 다시 생성).", warnOnly: true);
+                var rigRoot = Object.FindAnyObjectByType<RatScaleRig>();
+                report.Check(rigRoot != null && rigRoot.GetComponent<RatFallRecovery>() != null, "큰 낙하 완충(RatFallRecovery) 있음 (ISSUE-02)",
+                    "RatFallRecovery가 리그에 없습니다 (메뉴 3번으로 다시 생성).", warnOnly: true);
+                report.Check(rigRoot != null && rigRoot.GetComponent<RatHaptics>() != null, "컨트롤러 진동(RatHaptics) 있음 (ISSUE-15)",
+                    "RatHaptics가 리그에 없습니다.", warnOnly: true);
+                var amb = Object.FindAnyObjectByType<RatAmbience>();
+                report.Check(amb != null && new SerializedObject(amb).FindProperty("cityLoop")?.objectReferenceValue != null,
+                    "배경음(거리 소리·음악) 있음 (Q2-04)", "RatAmbience가 없거나 AudioSource가 연결되지 않았습니다 (메뉴 3번).", warnOnly: true);
+                report.Check(Object.FindObjectsByType<AudioListener>(FindObjectsInactive.Exclude).Length == 1 && !AudioListener.pause,
+                    "AudioListener 1개, 일시 정지 아님", "AudioListener가 1개가 아니거나 AudioListener.pause가 켜져 있습니다.", warnOnly: true);
+                // Quest 2 실기기 테스트 (Q2-02, Q2-03)
+                var lane = GameObject.Find("Paving_BikeLane");
+                var laneMat = lane != null ? lane.GetComponent<MeshRenderer>()?.sharedMaterial : null;
+                report.Check(laneMat != null && laneMat.name != "PP_AsphaltTex" && GameObject.Find("Paving_Alley") == null,
+                    "자전거 길: 밝은 재질, 골목 포석과 겹치지 않음 (Q2-02)",
+                    "자전거 길이 어두운 아스팔트이거나 골목 포석(Paving_Alley)과 겹칩니다 → Quest 2에서 검게 깜빡임 (메뉴 3번으로 다시 생성).", warnOnly: true);
+                int broomHides = zones.Count(z => { var c = z.Volume != null ? z.Volume.bounds.center : z.transform.position; return c.x > -1.7f && c.x < 0.7f && c.z > 18.4f && c.z < 23.2f; });
+                report.Check(broomHides >= 4, $"빗자루 추격 구간 숨을 곳 {broomHides}곳 (Q2-03)", $"빗자루 추격 구간 숨을 곳이 {broomHides}곳뿐입니다 (4곳 이상 권장).", warnOnly: true);
+                var hudCheck = Object.FindAnyObjectByType<RatHud>();
+                report.Check(hudCheck != null && new SerializedObject(hudCheck).FindProperty("backdrop")?.objectReferenceValue != null,
+                    "HUD 배경은 메시지가 있을 때만 (ISSUE-04)", "RatHud.backdrop이 비어 있습니다.", warnOnly: true);
+
                 // 재미 요소
                 var aware = Object.FindObjectsByType<PedestrianAwareness>(FindObjectsInactive.Include);
                 report.Check(aware.Length == walkers.Length, $"쥐를 알아채는 보행자 {aware.Length}명", $"PedestrianAwareness가 {aware.Length}개입니다 (보행자 {walkers.Length}명).", warnOnly: true);
@@ -260,6 +304,83 @@ namespace PetitParis.EditorTools
             var buildScenes = EditorBuildSettings.scenes;
             report.Check(buildScenes.Length > 0 && buildScenes[0].path == PetitParisPaths.Scene && buildScenes[0].enabled,
                 "Build 씬 목록 첫 번째 = PetitParisVR", "PetitParisVR이 Build 씬 목록 맨 앞에 없습니다 (메뉴 3번).", warnOnly: true);
+            CheckQuestBuild(report);
+        }
+
+        // ───────── Quest 2 Android 빌드 준비 (AI 리뷰 ISSUE-20/21) ─────────
+        // OpenXR·XR Management 패키지는 이 레포의 manifest에 없다 (설치하면 생긴다). 패키지 타입을 직접 참조하면
+        // 미설치 상태에서 컴파일이 깨지므로, 설정 파일(Assets/XR/…)의 내용을 글자로 읽어 점검한다.
+
+        const string XrGeneralSettingsPath = "Assets/XR/XRGeneralSettingsPerBuildTarget.asset";
+        const string OpenXrSettingsPath = "Assets/XR/Settings/OpenXR Package Settings.asset";
+
+        static void CheckQuestBuild(Report report)
+        {
+            report.Info("── Quest 2 빌드 준비 ──");
+            bool hasGeneral = System.IO.File.Exists(XrGeneralSettingsPath);
+            report.Check(hasGeneral, "XR Plug-in Management 설정 파일 있음",
+                "XR Plug-in Management 설정이 없습니다: Edit > Project Settings > XR Plug-in Management를 열고 Install, Android 탭에서 OpenXR 체크.");
+            if (hasGeneral)
+            {
+                string text = System.IO.File.ReadAllText(XrGeneralSettingsPath);
+                report.Check(text.Contains("OpenXRLoader"), "Android XR 로더 = OpenXR",
+                    "XR 로더 설정에 OpenXR이 없습니다: XR Plug-in Management > Android 탭에서 OpenXR을 체크하세요.");
+            }
+
+            bool hasOpenXr = System.IO.File.Exists(OpenXrSettingsPath);
+            report.Check(hasOpenXr, "OpenXR 설정 파일 있음", "OpenXR 설정 파일이 없습니다 (OpenXR 패키지 설치 후 XR Plug-in Management > OpenXR을 한 번 열면 생깁니다).");
+            if (hasOpenXr)
+            {
+                string text = System.IO.File.ReadAllText(OpenXrSettingsPath);
+                report.Check(FeatureEnabled(text, "OculusTouchControllerProfile Android"), "Android: Oculus Touch Controller Profile 켜짐 (Quest 2 컨트롤러)",
+                    "Android OpenXR > Enabled Interaction Profiles에 Oculus Touch Controller Profile이 없습니다. Quest 2 Touch 컨트롤러는 이 프로필이 필요합니다 (Touch Plus는 Quest 3용).");
+                report.Check(FeatureEnabled(text, "MetaQuestFeature Android"), "Android: Meta Quest Support 켜짐",
+                    "Android OpenXR > OpenXR Feature Groups에서 Meta Quest Support를 체크하세요.");
+                if (text.Contains("m_Name: MetaQuestFeature Android"))
+                    report.Check(text.Contains("quest2") || text.Contains("Quest2") || text.Contains("targetDevices"),
+                        "Meta Quest Support 대상 기기 설정 있음", "Meta Quest Support의 Target Devices에서 Quest 2를 체크했는지 확인하세요.", warnOnly: true);
+            }
+
+            report.Check(PlayerSettings.Android.targetArchitectures == AndroidArchitecture.ARM64, "Android ARM64",
+                "Android Target Architecture가 ARM64만이 아닙니다 (메뉴 0번).", warnOnly: true);
+            report.Check(PlayerSettings.GetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Android) == ScriptingImplementation.IL2CPP,
+                "Android IL2CPP", "Android Scripting Backend가 IL2CPP가 아닙니다 (메뉴 0번, ARM64에 필요).", warnOnly: true);
+            report.Check(PlayerSettings.colorSpace == ColorSpace.Linear, "Color Space Linear", "Color Space가 Linear가 아닙니다 (메뉴 0번).", warnOnly: true);
+
+            // 비네트 프리팹: 샘플 버전 폴더와 상관없이 찾는다
+            string vignette = PetitParisBuildKit.FindVignettePrefabPath();
+            report.Check(vignette != null, $"Comfort Vignette 프리팹: {vignette}",
+                "TunnelingVignette 프리팹이 없습니다: Package Manager > XR Interaction Toolkit > Samples > Starter Assets를 Import 하세요.", warnOnly: true);
+
+            // Android 품질 단계가 쓰는 URP 에셋 (Quest 2 기준 값)
+            var urp = AssetDatabase.LoadAssetAtPath<ScriptableObject>(PetitParisProjectSetup.MobileUrpAssetPath);
+            if (urp != null)
+            {
+                var so = new SerializedObject(urp);
+                bool hdr = so.FindProperty("m_SupportsHDR")?.boolValue ?? true;
+                int msaa = so.FindProperty("m_MSAA")?.intValue ?? 1;
+                float scale = so.FindProperty("m_RenderScale")?.floatValue ?? 0f;
+                float shadow = so.FindProperty("m_ShadowDistance")?.floatValue ?? 999f;
+                report.Check(!hdr && msaa == 4 && Mathf.Approximately(scale, 1f) && shadow <= 15f,
+                    $"Mobile URP (Quest 2): HDR 끔, MSAA {msaa}x, Render Scale {scale:0.##}, 그림자 {shadow:0}m",
+                    $"Mobile URP 값이 Quest 2 권장과 다릅니다 (HDR {(hdr ? "켬" : "끔")}, MSAA {msaa}x, Scale {scale:0.##}, 그림자 {shadow:0}m). 메뉴 5번.", warnOnly: true);
+            }
+
+            var comfort = AssetDatabase.LoadAssetAtPath<RatComfortSettings>(PetitParisPaths.Comfort);
+            if (comfort != null)
+                report.Check(comfort.vignetteInAir && comfort.vignetteOnRun && comfort.settingsVersion >= RatComfortSettings.CurrentVersion,
+                    "편안함: 공중·달리기 비네트 켜짐 (설정 v" + comfort.settingsVersion + ")",
+                    "RatComfortSettings가 이전 값입니다 (공중/달리기 비네트 꺼짐). 메뉴 3번으로 씬을 다시 만들면 옮겨집니다.", warnOnly: true);
+        }
+
+        /// <summary>OpenXR 설정 YAML에서 m_Name이 name인 블록의 m_enabled가 1인지.</summary>
+        static bool FeatureEnabled(string yaml, string name)
+        {
+            int i = yaml.IndexOf("m_Name: " + name, System.StringComparison.Ordinal);
+            if (i < 0) return false;
+            int end = yaml.IndexOf("--- !u!", i, System.StringComparison.Ordinal);
+            string block = end > 0 ? yaml.Substring(i, end - i) : yaml.Substring(i);
+            return block.Contains("m_enabled: 1");
         }
 
         /// <summary>

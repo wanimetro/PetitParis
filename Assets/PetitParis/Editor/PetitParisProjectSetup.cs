@@ -6,8 +6,10 @@ using UnityEngine.Rendering;
 namespace PetitParis.EditorTools
 {
     /// <summary>
-    /// Quest 3(Android) 빌드에 필요한 Player Settings를 한 번에 적용한다.
-    /// XR Plug-in Management / OpenXR 설정은 여기서 바꾸지 않는다 (Project Settings에서 직접 체크).
+    /// Quest 2/3(Android) 빌드에 필요한 Player Settings를 한 번에 적용한다.
+    /// XR Plug-in Management / OpenXR 설정은 여기서 바꾸지 않는다 (Project Settings에서 직접 체크, docs/QUEST2_ISSUE_RESOLUTION.md 6절).
+    /// Android 품질 단계가 쓰는 Assets/Settings/Mobile_RPAsset은 레포에 Quest 2 기준 값으로 저장되어 있다
+    /// (HDR 끔, MSAA 4x, Render Scale 1.0, 그림자 10m). PC(에디터) 품질 단계는 PC_RPAsset이라 영향 없음.
     /// </summary>
     public static class PetitParisProjectSetup
     {
@@ -73,7 +75,7 @@ namespace PetitParis.EditorTools
                 "Android(Quest)용 URP 설정을 바꿉니다. PC(에디터·Windows) 설정에는 영향이 없습니다.\n\n" +
                 $"• HDR: {Current(hdr)} → 끔 (모바일 VR 대역폭 절약)\n" +
                 $"• MSAA: {Current(msaa)}x → 4x (VR 계단 현상 감소)\n" +
-                $"• Render Scale: {Current(scale)} → 1.0 (Quest 3 선명도)\n" +
+                $"• Render Scale: {Current(scale)} → 1.0 (Quest 2 기본 해상도, 72Hz 기준)\n" +
                 $"• Shadow Distance: {Current(shadowDistance)} m → 10 m (작은 쥐 시점에서 그림자 해상도 확보)\n\n" +
                 "되돌리려면 Assets/Settings/Mobile_RPAsset의 Inspector에서 값을 다시 바꾸면 됩니다.";
             if (!EditorUtility.DisplayDialog("PETIT PARIS — Quest URP 최적화", message, "적용", "취소")) return;

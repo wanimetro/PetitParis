@@ -23,7 +23,7 @@ namespace PetitParis.EditorTools
         public const string FadeShader = "PetitParis/ScreenFade";
         public const string BlobShader = "PetitParis/BlobShadow";
 
-        /// <summary>XRI Starter Assets 샘플의 Comfort Vignette 프리팹 (이미 프로젝트에 임포트되어 있음).</summary>
+        /// <summary>참고용 기본 경로. 실제로는 PetitParisBuildKit.FindVignettePrefabPath()가 샘플 버전과 상관없이 찾는다.</summary>
         public const string VignettePrefab =
             "Assets/Samples/XR Interaction Toolkit/3.3.2/Starter Assets/TunnelingVignette/TunnelingVignette.prefab";
 

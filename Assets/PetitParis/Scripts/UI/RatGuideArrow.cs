@@ -10,6 +10,8 @@ namespace PetitParis
     /// - 쥐가 경로를 벗어나도 다시 경로 쪽으로 안내한다. 지나간 구간으로 되돌아가 가리키지 않도록 진행도를 기억한다.
     /// - 리스폰하면 진행도를 체크포인트 위치에 맞춰 다시 계산한다.
     /// - 화살표는 월드 공간 물체라 카메라를 움직이지 않는다 (멀미 없음). 목적지 근처와 완료 화면에서는 숨긴다.
+    /// - 사람에게 들켜 쫓기는 동안(PedestrianAwareness.AnyHunting)에는 원래 목표 대신 가장 가까운 안전 구역을
+    ///   초록색으로 가리킨다 (AI 리뷰 ISSUE-01). 숨어 있으면 숨긴다.
     /// 거리 단위는 월드 미터.
     /// </summary>
     [DisallowMultipleComponent]
@@ -44,12 +46,21 @@ namespace PetitParis
         [Tooltip("목적지까지 이 거리(월드 m) 안이면 숨긴다.")]
         [SerializeField, Range(0f, 2f)] float hideNearEnd = 0.4f;
 
+        [Header("쫓길 때 숨을 곳 안내")]
+        [SerializeField] RatDangerDetector danger;
+        [SerializeField, Range(0.5f, 6f)] float hideSearchRadius = 3f;
+        [SerializeField] Color hideColor = new Color(0.45f, 1f, 0.5f);
+
         float[] cumulative = new float[0];
         float totalLength;
         float maxReached;
         Quaternion currentYaw = Quaternion.identity;
         bool hasYaw;
         bool needsResync = true;
+        Renderer[] arrowRenderers;
+        MaterialPropertyBlock block;
+        bool tinted;
+        static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
         public bool ShowArrow { get => showArrow; set => showArrow = value; }
         public float Progress01 => totalLength > 0f ? Mathf.Clamp01(maxReached / totalLength) : 0f;
@@ -59,6 +70,9 @@ namespace PetitParis
             if (rig == null) rig = FindAnyObjectByType<RatScaleRig>();
             if (respawn == null && rig != null) respawn = rig.GetComponent<RatRespawn>();
             if (gameFlow == null) gameFlow = FindAnyObjectByType<PetitParisGameFlow>();
+            if (danger == null && rig != null) danger = rig.GetComponent<RatDangerDetector>();
+            if (arrow != null) arrowRenderers = arrow.GetComponentsInChildren<Renderer>(true);
+            block = new MaterialPropertyBlock();
             BuildCumulative();
             if (arrow == null) Debug.LogWarning("[PetitParis] RatGuideArrow: 화살표(arrow) 오브젝트가 연결되지 않았습니다.", this);
         }
@@ -114,10 +128,27 @@ namespace PetitParis
             float bob = Mathf.Sin(Time.time * 3f) * bobAmplitude;
             Vector3 arrowPos = p + view.normalized * distanceAhead + Vector3.up * (hoverHeight + bob);
 
-            // 화살표 방향: 경로 위 다음 지점 (뒤에 있으면 뒤를 가리킴 → 돌아서라는 뜻)
-            Vector3 target = PointAt(Mathf.Min(totalLength, param + lookAhead));
-            Vector3 dir = Flat(target - p);
-            if (dir.sqrMagnitude < 1e-6f) dir = Flat(PointAt(totalLength) - p);
+            // 쫓기는 중: 가장 가까운 안전 구역을 초록색으로 가리킨다. 이미 숨었으면 화살표를 숨긴다
+            Vector3 dir = Vector3.zero;
+            bool hiding = false;
+            if (PedestrianAwareness.AnyHunting && danger != null)
+            {
+                if (danger.IsSafe) { SetVisible(false); return; }
+                var zone = RatSafeZone.FindNearest(p, false, hideSearchRadius);
+                if (zone != null)
+                {
+                    dir = Flat(zone.GuidePoint - p);
+                    hiding = dir.sqrMagnitude > 1e-6f;
+                }
+            }
+            SetTint(hiding);
+            if (!hiding)
+            {
+                // 화살표 방향: 경로 위 다음 지점 (뒤에 있으면 뒤를 가리킴 → 돌아서라는 뜻)
+                Vector3 target = PointAt(Mathf.Min(totalLength, param + lookAhead));
+                dir = Flat(target - p);
+                if (dir.sqrMagnitude < 1e-6f) dir = Flat(PointAt(totalLength) - p);
+            }
             if (dir.sqrMagnitude < 1e-6f) { SetVisible(false); return; }
 
             Quaternion want = Quaternion.LookRotation(dir.normalized, Vector3.up);
@@ -125,6 +156,23 @@ namespace PetitParis
             hasYaw = true;
             arrow.SetPositionAndRotation(arrowPos, currentYaw * Quaternion.Euler(-tiltDegrees, 0f, 0f));
             SetVisible(true);
+        }
+
+        void SetTint(bool on)
+        {
+            if (on == tinted || arrowRenderers == null) return;
+            tinted = on;
+            foreach (var r in arrowRenderers)
+            {
+                if (r == null) continue;
+                if (on)
+                {
+                    r.GetPropertyBlock(block);
+                    block.SetColor(BaseColorId, hideColor);
+                    r.SetPropertyBlock(block);
+                }
+                else r.SetPropertyBlock(null);
+            }
         }
 
         void SetVisible(bool visible)

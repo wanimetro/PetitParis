@@ -94,12 +94,17 @@ namespace PetitParis.EditorTools
 
         // ───────────────────────── 말풍선·알아채는 보행자 ─────────────────────────
 
-        /// <summary>머리 위 말풍선 (흰 판 + 검은 글자). TMP 오브젝트를 켜고 끄면 판도 함께 보인다.</summary>
-        public static TextMeshPro SpeechBubble(Transform body, float height, TMP_FontAsset font, MaterialLibrary m)
+        /// <summary>
+        /// 말풍선 (흰 판 + 검은 글자). TMP 오브젝트를 켜고 끄면 판도 함께 보인다.
+        /// 쥐 눈높이(12cm)에서 보이도록 사람 머리 위가 아니라 정강이 높이 앞쪽에 띄운다 (AI 리뷰 ISSUE-16:
+        /// 2.15m 높이는 0.7m 거리에서 올려다보는 각도 약 71°로 화면 밖이었다. 0.55m면 약 31°).
+        /// </summary>
+        public static TextMeshPro SpeechBubble(Transform body, float height, TMP_FontAsset font, MaterialLibrary m, float forward = 0.3f, float scale = 0.6f)
         {
             var go = new GameObject("SpeechBubble", typeof(RectTransform));
             go.transform.SetParent(body, false);
-            go.transform.localPosition = new Vector3(0f, height, 0f);
+            go.transform.localPosition = new Vector3(0f, height, forward);
+            go.transform.localScale = Vector3.one * scale;
             var tmp = go.AddComponent<TextMeshPro>();
             tmp.font = font != null ? font : TMP_Settings.defaultFontAsset;
             tmp.text = "!";
@@ -127,7 +132,7 @@ namespace PetitParis.EditorTools
             TMP_FontAsset font, MaterialLibrary m, Bounds? customArea = null)
         {
             var body = path.Body;
-            var bubble = SpeechBubble(body != null ? body : path.transform, 2.15f, font, m);
+            var bubble = SpeechBubble(body != null ? body : path.transform, 0.55f, font, m);
             var voice = (body != null ? body : path.transform).gameObject.AddComponent<AudioSource>();
             var aw = path.gameObject.AddComponent<PedestrianAwareness>();
             var so = new SerializedObject(aw);
@@ -305,7 +310,7 @@ namespace PetitParis.EditorTools
         /// 두 점을 잇는 널빤지. fromTop/toTop = 널빤지 윗면 중심선의 양 끝 (월드).
         /// 양 끝을 조금 늘려 바닥·상자 윗면과 틈이 없게 한다. 쥐가 걸어 올라갈 수 있는 경사(약 30도 이하)로 놓는다.
         /// </summary>
-        public static GameObject Plank(string name, Transform parent, Vector3 fromTop, Vector3 toTop, float width, Material mat)
+        public static GameObject Plank(string name, Transform parent, Vector3 fromTop, Vector3 toTop, float width, Material mat, float lipHeight = 0f)
         {
             const float thickness = 0.025f, overlap = 0.03f;
             Vector3 d = toTop - fromTop;
@@ -316,6 +321,18 @@ namespace PetitParis.EditorTools
             Vector3 center = (fromTop + toTop) * 0.5f - up * (thickness * 0.5f);
             var go = Box(name, parent, Vector3.zero, new Vector3(width, thickness, length + overlap * 2f), mat);
             go.transform.SetPositionAndRotation(center, rot);
+            if (lipHeight > 0f)
+            {
+                // 양옆 낮은 턱 (CharacterController stepOffset 2cm보다 높게 → 옆으로 미끄러져 떨어지지 않는다). 위·아래 끝은 열어 둔다
+                const float lipWidth = 0.015f;
+                foreach (float side in new[] { -1f, 1f })
+                {
+                    var lip = Box(name + "_Lip", go.transform, Vector3.zero, Vector3.one, mat);
+                    lip.transform.SetPositionAndRotation(
+                        center + rot * new Vector3(side * (width * 0.5f - lipWidth * 0.5f), thickness * 0.5f + lipHeight * 0.5f, 0f), rot);
+                    lip.transform.localScale = new Vector3(lipWidth / width, lipHeight / thickness, (length - overlap * 2f) / (length + overlap * 2f));
+                }
+            }
             return go;
         }
 

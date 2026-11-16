@@ -34,7 +34,7 @@ namespace PetitParis
         float bufferedUntil = -1f;
         float lastJumpTime = -10f;
 
-        public bool IsEnabled => jumpEnabled && (comfort == null || comfort.enableJump);
+        public bool IsEnabled => jumpEnabled && (comfort == null || comfort.EffectiveJumpEnabled);
         public bool IsAirborneFromJump { get; private set; }
 
         public event Action Jumped;

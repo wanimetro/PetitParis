@@ -49,6 +49,9 @@ namespace PetitParis
         public int TotalPoints { get; private set; }
         public int CarriedCount => carried.Count;
 
+        /// <summary>조각을 주웠을 때 (진동 등).</summary>
+        public event System.Action<CrumbPickup> Picked;
+
         void Awake()
         {
             if (rig == null) rig = FindAnyObjectByType<RatScaleRig>();
@@ -112,12 +115,13 @@ namespace PetitParis
         {
             c.Collect(bodyAnchor);
             carried.Add(c);
+            Picked?.Invoke(c);
             Score += c.Points;
             CollectedCount++;
             if (c.IsGolden)
             {
                 GoldenCount++;
-                if (gameFlow != null) gameFlow.PostMessage(PetitParisText.MessageGolden);
+                if (gameFlow != null) gameFlow.PostMessage(PetitParisText.MessageGolden, 1);
             }
             if (sfx != null)
             {
@@ -148,7 +152,7 @@ namespace PetitParis
                 c.Restore();
             }
             carried.Clear();
-            if (gameFlow != null) gameFlow.PostMessage(string.Format(PetitParisText.MessageCrumbsLostFormat, lost));
+            if (gameFlow != null) gameFlow.PostMessage(string.Format(PetitParisText.MessageCrumbsLostFormat, lost), 1); // 실패 메시지(2) 뒤에 이어서
         }
 
         /// <summary>별 개수 (0~3). arrived = 목적지에 도착했는지.</summary>

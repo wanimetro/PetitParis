@@ -64,7 +64,7 @@ namespace PetitParis.EditorTools
             var npcs = Group("Pedestrians", null);
             var waiterA = Pedestrian("Pedestrian_A_Waiter", npcs,
                 new[] { new Vector3(-2.5f, 0f, 0.2f), new Vector3(-2.5f, 0f, 6.9f), new Vector3(0.25f, 0f, 6.9f), new Vector3(0.25f, 0f, 0.2f) },
-                PedestrianPath.LoopMode.Loop, 0.9f, 3f, new Color(0.25f, 0.3f, 0.45f), m, PedestrianStyle.Waiter);
+                PedestrianPath.LoopMode.Loop, 0.9f, 25f, new Color(0.25f, 0.3f, 0.45f), m, PedestrianStyle.Waiter); // 첫 25초는 조작 연습 (ISSUE-07)
             var chefB = Pedestrian("Pedestrian_B_Chef", npcs,
                 new[] { new Vector3(-2.2f, 0f, 7.6f), new Vector3(0.3f, 0f, 8.7f), new Vector3(-2.2f, 0f, 9.8f),
                         new Vector3(0.3f, 0f, 10.9f), new Vector3(-2.2f, 0f, 12.0f), new Vector3(0.2f, 0f, 12.9f) },
@@ -77,7 +77,7 @@ namespace PetitParis.EditorTools
                 PedestrianPath.LoopMode.PingPong, 0.35f, 0f, new Color(0.25f, 0.3f, 0.45f), m, PedestrianStyle.Waiter);
             SetPathFloat(porter, "pauseAtWaypoint", 2.0f);
             var broom = PetitParisGameplayKit.Broom(porter, m);
-            var porterAware = PetitParisGameplayKit.Awareness(porter, PetitParisText.ShoutWaiter, 0.9f, 0.6f, font, m,
+            var porterAware = PetitParisGameplayKit.Awareness(porter, PetitParisText.ShoutWaiter, 0.9f, 0.42f, font, m,
                 new Bounds(new Vector3(-0.5f, 0f, 20.75f), new Vector3(2.2f, 20f, 5.7f)));
 
             // 주방 요리사 (뒷문 앞 통로를 오간다)
@@ -87,24 +87,30 @@ namespace PetitParis.EditorTools
             SetPathFloat(kitchenChef, "pauseAtWaypoint", 1.2f);
 
             // 사람들이 쥐를 알아챈다
-            PetitParisGameplayKit.Awareness(waiterA, PetitParisText.ShoutRat, 1.0f, 0.55f, font, m);
-            PetitParisGameplayKit.Awareness(chefB, PetitParisText.ShoutRat, 1.0f, 0.55f, font, m);
-            PetitParisGameplayKit.Awareness(kitchenChef, PetitParisText.ShoutChef, 1.1f, 0.6f, font, m,
+            // 추격 속도는 쥐 달리기(0.36)와 비슷하게: 질주(0.6)나 숨기로 따돌릴 수 있다 (AI 리뷰 ISSUE-01)
+            PetitParisGameplayKit.Awareness(waiterA, PetitParisText.ShoutRat, 1.0f, 0.38f, font, m);
+            PetitParisGameplayKit.Awareness(chefB, PetitParisText.ShoutRat, 1.0f, 0.38f, font, m);
+            PetitParisGameplayKit.Awareness(kitchenChef, PetitParisText.ShoutChef, 1.1f, 0.4f, font, m,
                 new Bounds(new Vector3(-4.55f, 0f, 22.2f), new Vector3(4.9f, 20f, 0.8f)));
 
             // ── 게임 진행 ──
             var gameplay = Group("Gameplay", null);
             var cps = Group("Checkpoints", gameplay);
-            var flags = new Renderer[5];
+            var flags = new Renderer[7];
             flags[0] = Checkpoint("CP0_Start_WallCrack", cps, Spawn, SpawnYaw, m);
             flags[1] = Checkpoint("CP1_Terrace_UnderChair", cps, new Vector3(-1.5f, 0f, 6.08f), 0f, m);
             flags[2] = Checkpoint("CP2_Bakery_UnderBench", cps, new Vector3(-2.7f, 0f, 10.0f), 0f, m);
             flags[3] = Checkpoint("CP3_Alley_UnderBench", cps, new Vector3(-1.35f, 0f, 15.0f), 0f, m);
             flags[4] = Checkpoint("CP4_Quai_KitchenDoor", cps, new Vector3(-1.9f, 0f, 23.9f), 270f, m);
+            // 주방 체크포인트 2개 (ISSUE-19): 널빤지 시작 앞 바닥(요리사 통로 밖), 두 번째 상자 위
+            flags[5] = Checkpoint("CP5_Kitchen_PlankStart", cps, new Vector3(-2.1f, 0f, 21.1f), 270f, m);
+            flags[6] = Checkpoint("CP6_Kitchen_CrateB", cps, new Vector3(-4.35f, 0.6f, 21.5f), 270f, m);
             var manager = cps.gameObject.AddComponent<CheckpointManager>();
             var chime = cps.gameObject.AddComponent<AudioSource>();
             var mso = new SerializedObject(manager);
-            SetObjectArray(mso, "checkpoints", new Object[] { cps.GetChild(0), cps.GetChild(1), cps.GetChild(2), cps.GetChild(3), cps.GetChild(4) });
+            var cpList = new Object[cps.childCount];
+            for (int i = 0; i < cpList.Length; i++) cpList[i] = cps.GetChild(i);
+            SetObjectArray(mso, "checkpoints", cpList);
             SetObjectArray(mso, "markers", flags);
             SetObject(mso, "chimeSource", chime);
             mso.ApplyModifiedPropertiesWithoutUndo();
@@ -131,13 +137,15 @@ namespace PetitParis.EditorTools
             Hint("Hint_Footsteps", hints, new Vector3(-2.65f, 0.2f, 0.75f), PetitParisText.HintFootsteps, font);
             Hint("Hint_Hide", hints, new Vector3(-1.5f, 0.2f, 0.7f), PetitParisText.HintHide, font);
             Hint("Hint_Bakery", hints, new Vector3(-2.0f, 0.2f, 7.45f), PetitParisText.HintBakery, font);
+            Hint("Hint_Awning", hints, new Vector3(-2.55f, 0.2f, 8.6f), PetitParisText.HintAwning, font);
+            Hint("Hint_Start", hints, new Vector3(-2.8f, 0.17f, -0.72f), PetitParisText.HintStart, font);
             Hint("Hint_Bike", hints, new Vector3(-0.5f, 0.2f, 15.95f), PetitParisText.HintBike, font);
             var goalHint = Hint("Hint_Seine", hints, new Vector3(-0.5f, 0.45f, 24.9f), PetitParisText.HintSeine, font);
             var gso = new SerializedObject(goalHint);
             SetFloat(gso, "fullDistance", 2.5f);
             SetFloat(gso, "fadeDistance", 5f);
             gso.ApplyModifiedPropertiesWithoutUndo();
-            Hint("Hint_Crumbs", hints, new Vector3(-2.2f, 0.2f, 0.2f), PetitParisText.HintCrumbs, font);
+            Hint("Hint_Crumbs", hints, new Vector3(-1.95f, 0.2f, -0.85f), PetitParisText.HintCrumbs, font);
             Hint("Hint_Stealth", hints, new Vector3(-1.0f, 0.2f, 1.3f), PetitParisText.HintCrouchStealth, font);
             Hint("Hint_Pallet", hints, new Vector3(-1.0f, 0.2f, 18.9f), PetitParisText.HintPallet, font);
             Hint("Hint_KitchenDoor", hints, new Vector3(-2.95f, 0.3f, 23.45f), PetitParisText.HintKitchenDoor, font);
@@ -179,29 +187,39 @@ namespace PetitParis.EditorTools
             var collection = collectionGO.AddComponent<CrumbCollection>();
             var popup = Label("CrumbPopup", collectionGO.transform, Vector3.zero, "+1", 0.35f, 0.4f, Color.white, font, null);
             popup.fontStyle = FontStyles.Bold;
+            MakeOverlayAll(collectionGO, m, Color.clear);
 
             // 시야 아래쪽 안내판 (점수 + 메시지). PC 모드에서도 보인다
             var hudGO = new GameObject("RatHud");
             hudGO.transform.SetParent(gameplay, false);
             var hud = hudGO.AddComponent<RatHud>();
-            var hudScore = Label("Score", hudGO.transform, new Vector3(0f, -0.012f, 0f), "", 0.13f, 0.3f, new Color(1f, 0.92f, 0.7f), font, null);
-            var hudMessage = Label("Message", hudGO.transform, new Vector3(0f, 0.02f, 0f), "", 0.12f, 0.34f, new Color(1f, 0.85f, 0.45f), font, null);
+            // 메시지(가운데) 위에 작은 점수 줄. 글자 상자 폭 0.26m(체감 2.6m) → PC 화면에서도 잘리지 않게 두 줄로 접힌다 (ISSUE-04)
+            var hudMessage = Label("Message", hudGO.transform, Vector3.zero, "", 0.11f, 0.26f, new Color(1f, 0.88f, 0.5f), font, null);
+            var hudScore = Label("Score", hudGO.transform, new Vector3(0f, 0.024f, 0f), "", 0.08f, 0.26f, new Color(1f, 0.95f, 0.8f), font, null);
             hudScore.fontStyle = FontStyles.Bold;
             hudMessage.fontStyle = FontStyles.Bold;
-            // 글자 뒤 부드러운 어두운 배경 (밝은 하늘·벽 위에서도 읽히게)
+            // 메시지 뒤 어두운 배경 (메시지가 있을 때만 RatHud가 켠다)
             var hudBack = RemoveCollider(GameObject.CreatePrimitive(PrimitiveType.Quad));
             hudBack.name = "Backdrop";
             hudBack.transform.SetParent(hudGO.transform, false);
-            hudBack.transform.localPosition = new Vector3(0f, 0.004f, 0.004f);
-            hudBack.transform.localScale = new Vector3(0.42f, 0.085f, 1f);
+            hudBack.transform.localPosition = new Vector3(0f, 0f, 0.004f);
+            hudBack.transform.localScale = new Vector3(0.28f, 0.05f, 1f);
             var hudBackR = hudBack.GetComponent<MeshRenderer>();
-            hudBackR.sharedMaterial = m.Blob("PP_HudBackdrop", new Color(0.05f, 0.04f, 0.06f, 0.55f));
             hudBackR.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             hudBackR.receiveShadows = false;
+            hudBack.SetActive(false);
+            // 깊이 검사 없이 맨 위에 그린다 → 바닥·널빤지·벽에 가려지지 않는다
+            MakeOverlayAll(hudGO, m, new Color(0.05f, 0.04f, 0.06f, 0.6f), "Backdrop");
 
             // 조작 안내 패널 (시작 지점 53cm 앞, 동쪽을 바라보는 쥐가 읽을 수 있게). Spawn을 옮기면 같이 따라간다.
-            var (intro, introText) = Panel("IntroPanel", gameplay, Spawn + new Vector3(0.53f, 0.25f, 0f), Quaternion.LookRotation(Vector3.right),
-                new Vector2(0.38f, 0.27f), "<b>PETIT PARIS</b>\n" + PetitParisText.IntroBody, 0.12f, font, m);
+            // A(Space)를 눌러야 닫힌다 (ISSUE-06). 조작법이 길어져 패널을 조금 키웠다
+            var (intro, introText) = Panel("IntroPanel", gameplay, Spawn + new Vector3(0.6f, 0.26f, 0f), Quaternion.LookRotation(Vector3.right),
+                new Vector2(0.46f, 0.32f), "<b>PETIT PARIS</b>\n" + PetitParisText.IntroBody, 0.11f, font, m);
+            // X(Tab) 메뉴: 일시 정지 + 조작법 + 규칙 + 편안함 모드 (눈앞에 뜨고, 다른 물체에 가려지지 않는다)
+            var (menu, menuText) = Panel("MenuPanel", gameplay, Spawn + Vector3.up * 0.15f, Quaternion.identity,
+                new Vector2(0.46f, 0.34f), PetitParisText.MenuTitle, 0.1f, font, m);
+            MakeOverlay(menu, m);
+            menu.SetActive(false);
             // 완료 패널 (도착하면 카메라 앞에 나타남)
             var (complete, completeText) = Panel("CompletePanel", gameplay, goalPoint.position + Vector3.up * 0.15f, Quaternion.identity,
                 new Vector2(0.34f, 0.24f), PetitParisText.CompleteTitle, 0.12f, font, m);
@@ -212,7 +230,7 @@ namespace PetitParis.EditorTools
             var route = Group("GuideRoute", gameplay);
             Vector3[] routePoints =
             {
-                new Vector3(-2.75f, 0f, -0.4f), new Vector3(-2.2f, 0f, 0.55f), new Vector3(-1.15f, 0f, 1.0f), new Vector3(-1.15f, 0f, 5.9f),
+                new Vector3(-2.6f, 0f, -0.5f), new Vector3(-1.45f, 0f, -0.6f), new Vector3(-1.15f, 0f, 0.4f), new Vector3(-1.15f, 0f, 5.9f),
                 new Vector3(-1.5f, 0f, 6.08f), new Vector3(-1.15f, 0f, 6.6f), new Vector3(-1.3f, 0f, 7.6f), new Vector3(-2.45f, 0f, 9.4f),
                 new Vector3(-2.7f, 0f, 10.0f), new Vector3(-2.4f, 0f, 11.0f), new Vector3(-1.2f, 0f, 12.6f), new Vector3(-0.5f, 0f, 13.8f),
                 new Vector3(-1.1f, 0f, 14.6f), new Vector3(-1.35f, 0f, 15.0f), new Vector3(-0.5f, 0f, 15.8f), new Vector3(-0.5f, 0f, 18.2f),
@@ -234,10 +252,11 @@ namespace PetitParis.EditorTools
 
             // 쥐 속도: 사용자 요청으로 더 빠르게 (걷기 체감 2m/s, 질주 체감 5.5m/s). 이미 있는 설정 에셋도 올려 준다
             var speedCfg = GetOrCreateAsset<RatScaleConfig>(PetitParisPaths.Config);
-            if (speedCfg.walkSpeed < 0.2f || speedCfg.dashSpeed < 0.55f)
+            // 질주 0.6: 달리기(0.2 × 1.8 = 0.36)보다 확실히 빠르게 (AI 리뷰 ISSUE-11)
+            if (speedCfg.walkSpeed < 0.2f || speedCfg.dashSpeed < 0.6f)
             {
                 speedCfg.walkSpeed = Mathf.Max(speedCfg.walkSpeed, 0.2f);
-                speedCfg.dashSpeed = Mathf.Max(speedCfg.dashSpeed, 0.55f);
+                speedCfg.dashSpeed = Mathf.Max(speedCfg.dashSpeed, 0.6f);
                 EditorUtility.SetDirty(speedCfg);
             }
 
@@ -254,7 +273,7 @@ namespace PetitParis.EditorTools
             Wire(flow, ("rig", rig.scaleRig), ("input", rig.reader), ("locomotion", rig.locomotion), ("respawn", rig.respawn),
                 ("danger", rig.danger), ("checkpoints", manager), ("fader", rig.fader), ("objectiveMarker", objective), ("sfx", flowSfx),
                 ("goalVolume", goalBox), ("goalMarkerTarget", goalPoint), ("introPanel", intro), ("introText", introText),
-                ("completePanel", complete.transform), ("completeText", completeText));
+                ("completePanel", complete.transform), ("completeText", completeText), ("menuPanel", menu.transform), ("menuText", menuText));
             Wire(manager, ("rig", rig.scaleRig));
             Wire(objective, ("visual", diamond.transform), ("rig", rig.scaleRig));
             Wire(rig.respawn, ("checkpoints", manager));
@@ -263,8 +282,13 @@ namespace PetitParis.EditorTools
             var collectionSfx = collectionGO.AddComponent<AudioSource>();
             Wire(collection, ("rig", rig.scaleRig), ("danger", rig.danger), ("respawn", rig.respawn), ("checkpoints", manager),
                 ("gameFlow", flow), ("sfx", collectionSfx), ("popup", popup));
-            Wire(hud, ("rig", rig.scaleRig), ("gameFlow", flow), ("crumbs", collection), ("scoreText", hudScore), ("messageText", hudMessage));
-            Wire(guide, ("rig", rig.scaleRig), ("respawn", rig.respawn), ("gameFlow", flow), ("arrow", arrowVisual.transform));
+            Wire(hud, ("rig", rig.scaleRig), ("gameFlow", flow), ("crumbs", collection), ("scoreText", hudScore), ("messageText", hudMessage),
+                ("backdrop", hudBack));
+            Wire(guide, ("rig", rig.scaleRig), ("respawn", rig.respawn), ("gameFlow", flow), ("arrow", arrowVisual.transform), ("danger", rig.danger));
+            var fallRecovery = rig.root.GetComponent<RatFallRecovery>();
+            if (fallRecovery != null) Wire(fallRecovery, ("gameFlow", flow));
+            var haptics = rig.root.GetComponent<RatHaptics>();
+            if (haptics != null) Wire(haptics, ("crumbs", collection));
             var gsoArrow = new SerializedObject(guide);
             SetObjectArray(gsoArrow, "route", routeNodes);
             gsoArrow.ApplyModifiedPropertiesWithoutUndo();
@@ -529,7 +553,8 @@ namespace PetitParis.EditorTools
                 PetitParisGameplayKit.Crumb($"{kind}_{i++:00}", root, new Vector3(x, y, z), kind, m);
 
             // 테라스: 안내 경로 위 부스러기 줄 + 웨이터가 도는 길 위 크루아상 + 벽과 의자 사이 황금 크루아상
-            Put(C, -2.3f, 0f, 0.35f); Put(C, -1.8f, 0f, 0.75f); Put(C, -1.15f, 0f, 1.6f); Put(C, -1.15f, 0f, 2.6f);
+            // 첫 부스러기는 웨이터 순환로(z 0.2 줄)에서 0.7m 이상 떨어진 남쪽 벽 쪽에 (ISSUE-07)
+            Put(C, -2.45f, 0f, -0.6f); Put(C, -1.95f, 0f, -0.65f); Put(C, -1.45f, 0f, -0.6f); Put(C, -1.15f, 0f, 1.6f); Put(C, -1.15f, 0f, 2.6f);
             Put(C, -1.15f, 0f, 3.6f); Put(C, -1.15f, 0f, 4.6f); Put(C, -1.15f, 0f, 5.6f);
             Put(R, -2.5f, 0f, 3.0f); Put(R, 0.25f, 0f, 4.6f);
             Put(S, -1.5f, 0f, 2.6f);  // 두 테이블 사이 (보행자 길과 가까움)
@@ -689,7 +714,7 @@ namespace PetitParis.EditorTools
             // ── 오르막: 널빤지 → 상자 A(0.3) → 널빤지 → 상자 B(0.6) → 널빤지 → 상자 C(0.9) → 식탁 ──
             var climb = Group("Climb", k);
             for (int i = 0; i < KitchenPlanks.Length; i++)
-                PetitParisGameplayKit.Plank($"Plank_{i}", climb, KitchenPlanks[i].from, KitchenPlanks[i].to, 0.15f, plankMat);
+                PetitParisGameplayKit.Plank($"Plank_{i}", climb, KitchenPlanks[i].from, KitchenPlanks[i].to, 0.25f, plankMat, 0.03f); // 폭 25cm + 양옆 3cm 턱 (ISSUE-02)
             PetitParisGameplayKit.CrateStack("Crates_A", climb, -3.35f, -2.95f, 21.3f, 21.7f, 1, m);
             PetitParisGameplayKit.CrateStack("Crates_B", climb, -4.55f, -4.15f, 21.3f, 21.7f, 2, m);
             PetitParisGameplayKit.CrateStack("Crates_C", climb, -5.75f, -5.35f, 21.3f, 21.7f, 3, m);

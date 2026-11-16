@@ -66,6 +66,32 @@ namespace PetitParis
 
         public bool Accepts(bool crouched) => !requireCrouch || crouched;
 
+        /// <summary>from에서 가장 가까운 안전 구역 (수평 거리, maxDistance 이내). 없으면 null. 들켰을 때 숨을 곳 안내에 쓴다.</summary>
+        public static RatSafeZone FindNearest(Vector3 from, bool crouched, float maxDistance)
+        {
+            RatSafeZone best = null;
+            float bestD = maxDistance * maxDistance;
+            foreach (var z in active)
+            {
+                if (z == null || !z.Accepts(crouched) || z.Volume == null) continue;
+                Vector3 c = z.Volume.bounds.center;
+                if (Mathf.Abs(c.y - from.y) > 0.5f) continue; // 다른 층(식탁 위 ↔ 바닥)은 제외
+                float d = new Vector2(c.x - from.x, c.z - from.z).sqrMagnitude;
+                if (d < bestD) { bestD = d; best = z; }
+            }
+            return best;
+        }
+
+        /// <summary>안내 화살표가 가리킬 바닥 위치.</summary>
+        public Vector3 GuidePoint
+        {
+            get
+            {
+                var b = Volume != null ? Volume.bounds : new Bounds(transform.position, Vector3.zero);
+                return new Vector3(b.center.x, b.min.y, b.center.z);
+            }
+        }
+
         /// <summary>RatDangerDetector가 쥐의 입장/퇴장을 알려준다.</summary>
         public void SetOccupied(bool value)
         {

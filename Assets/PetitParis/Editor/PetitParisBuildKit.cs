@@ -214,6 +214,7 @@ namespace PetitParis.EditorTools
             parts.respawn = root.AddComponent<RatRespawn>();
             var fallRecovery = root.AddComponent<RatFallRecovery>(); // 큰 낙하 → 페이드 후 올라가던 자리로 (ISSUE-02)
             var haptics = root.AddComponent<RatHaptics>();          // 컨트롤러 진동 (ISSUE-15)
+            root.AddComponent<RatArmSwing>();                      // 양손 흔들기 = 달리기 (속도 배율만, 이동은 RatLocomotionController)
             var sfx = root.AddComponent<AudioSource>();
             sfx.playOnAwake = false;
             sfx.spatialBlend = 0f;

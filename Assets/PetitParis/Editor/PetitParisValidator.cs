@@ -216,6 +216,8 @@ namespace PetitParis.EditorTools
                     "RatFallRecovery가 리그에 없습니다 (메뉴 3번으로 다시 생성).", warnOnly: true);
                 report.Check(rigRoot != null && rigRoot.GetComponent<RatHaptics>() != null, "컨트롤러 진동(RatHaptics) 있음 (ISSUE-15)",
                     "RatHaptics가 리그에 없습니다.", warnOnly: true);
+                report.Check(rigRoot != null && rigRoot.GetComponent<RatArmSwing>() != null, "양손 흔들기 달리기(RatArmSwing) 있음",
+                    "RatArmSwing이 리그에 없습니다 (실행 중 자동 추가되지만 메뉴 3번으로 다시 생성 권장).", warnOnly: true);
                 var amb = Object.FindAnyObjectByType<RatAmbience>();
                 report.Check(amb != null && new SerializedObject(amb).FindProperty("cityLoop")?.objectReferenceValue != null,
                     "배경음(거리 소리·음악) 있음 (Q2-04)", "RatAmbience가 없거나 AudioSource가 연결되지 않았습니다 (메뉴 3번).", warnOnly: true);

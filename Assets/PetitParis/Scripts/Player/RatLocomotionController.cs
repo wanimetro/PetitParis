@@ -47,6 +47,10 @@ namespace PetitParis
                  "기본값: 걷기 0.2 → 달리기 0.36, 질주 0.6 (월드 m/s). 질주가 달리기보다 확실히 빠르게.")]
         [SerializeField, Range(1f, 3f)] float runMultiplier = 1.8f;
 
+        [Tooltip("양손 흔들기(RatArmSwing) 최고 배율. 스틱을 안 밀고 흔들면 바라보는 방향으로 달린다.")]
+        [SerializeField, Range(1f, 3f)] float armSwingMultiplier = 2f;
+        [SerializeField] RatArmSwing armSwing;
+
         [Tooltip("공중에서의 조작 비율.")]
         [SerializeField, Range(0f, 1f)] float airControl = 0.4f;
 
@@ -97,6 +101,8 @@ namespace PetitParis
         public bool IsSuspended => suspended;
         public Vector2 LastStick { get; private set; }
         public bool IsRunning { get; private set; }
+        /// <summary>양손 흔들기로 달리는 중.</summary>
+        public bool IsSwingRunning { get; private set; }
         /// <summary>왼쪽 스틱 누르기로 켠 달리기 상태.</summary>
         public bool IsRunLatched => runLatched;
         /// <summary>왼쪽 스틱 누르기로 달리기를 켜거나 껐을 때 (진동 피드백).</summary>
@@ -144,6 +150,8 @@ namespace PetitParis
             if (dash == null) dash = GetComponent<RatDashController>();
             if (jump == null) jump = GetComponent<RatJumpController>();
             if (crouch == null) crouch = GetComponent<RatCrouchController>();
+            if (armSwing == null) armSwing = GetComponentInParent<RatArmSwing>();
+            if (armSwing == null && rig != null) armSwing = rig.gameObject.AddComponent<RatArmSwing>(); // 예전에 만든 씬도 동작하게
         }
 
         void Update()
@@ -176,9 +184,15 @@ namespace PetitParis
             Vector3 wishDirection = forward * stick.y + right * stick.x;   // 크기 0~1 = 스틱 세기
             // 달리기: 왼손 그립 누르고 있기, 또는 왼쪽 스틱 누르기(한 번 누르면 켜지고, 멈추거나 다시 누르면 꺼짐) (Q2-01)
             UpdateRunLatch(stick, dt);
-            bool running = !inputLocked && (input.RunHeld || runLatched) && (comfort == null || comfort.enableRun) && (crouch == null || !crouch.IsCrouched);
-            IsRunning = running && stick.sqrMagnitude > 0.01f;
-            float walkSpeed = rig.Config.walkSpeed * (crouch != null ? crouch.SpeedMultiplier : 1f) * (running ? runMultiplier : 1f)
+            bool canRun = !inputLocked && (comfort == null || comfort.enableRun) && (crouch == null || !crouch.IsCrouched);
+            bool running = canRun && (input.RunHeld || runLatched);
+            // 양손 흔들기: 흔드는 세기만큼 빨라진다. 스틱을 안 밀었으면 바라보는 방향(Yaw)으로
+            float swing = canRun && armSwing != null ? armSwing.SwingFactor : 0f;
+            if (swing > 0f && stick.sqrMagnitude < 0.01f) wishDirection = forward * swing;
+            float speedMul = Mathf.Max(running ? runMultiplier : 1f, Mathf.Lerp(1f, armSwingMultiplier, swing));
+            IsSwingRunning = swing > 0.3f;
+            IsRunning = (running && stick.sqrMagnitude > 0.01f) || IsSwingRunning;
+            float walkSpeed = rig.Config.walkSpeed * (crouch != null ? crouch.SpeedMultiplier : 1f) * speedMul
                               * (comfort != null ? comfort.EffectiveSpeedMultiplier : 1f);
             Vector3 targetPlanar = wishDirection * walkSpeed;
 

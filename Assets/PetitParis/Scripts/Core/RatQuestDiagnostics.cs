@@ -15,6 +15,7 @@ namespace PetitParis
         readonly float[] samples = new float[256];
         float next;
         RatArmSwing swing;
+        UnityEngine.Video.VideoPlayer video;
 
 #if UNITY_ANDROID && !UNITY_EDITOR
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -50,7 +51,10 @@ namespace PetitParis
             string swingText = swing == null ? "no RatArmSwing" :
                 $"src={swing.Source} devices={swing.DevicesFound} missing={swing.MissingNode} L={swing.LeftHandSpeed:0.00} R={swing.RightHandSpeed:0.00} factor={swing.SwingFactor:0.00} enabled={swing.isActiveAndEnabled}";
 
-            Debug.Log($"[PetitParis][Diag] audio pause={AudioListener.pause} vol={AudioListener.volume:0.00} listeners={FindObjectsByType<AudioListener>(FindObjectsInactive.Exclude).Length} " +
+            if (video == null) video = FindAnyObjectByType<UnityEngine.Video.VideoPlayer>();
+            string videoText = video == null ? "none" : $"prepared={video.isPrepared} playing={video.isPlaying} frame={video.frame} t={video.time:0.0}";
+
+            Debug.Log($"[PetitParis][Diag] video {videoText} | audio pause={AudioListener.pause} vol={AudioListener.volume:0.00} listeners={FindObjectsByType<AudioListener>(FindObjectsInactive.Exclude).Length} " +
                       $"playing={playing}/{total} rms={rms:0.00000} rate={cfg.sampleRate} speaker={cfg.speakerMode} timeScale={Time.timeScale:0.0} | {names}| swing {swingText}");
         }
     }

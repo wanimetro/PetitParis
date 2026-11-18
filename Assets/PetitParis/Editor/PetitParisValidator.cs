@@ -277,8 +277,26 @@ namespace PetitParis.EditorTools
                 }
                 report.Check(Object.FindAnyObjectByType<KitchenDoorGate>() != null, "주방 뒷문 게이트(센강 난간 CP5에서 열림) 있음",
                     "KitchenDoorGate가 없습니다 (메뉴 3번으로 다시 생성).", warnOnly: true);
-                report.Check(Object.FindAnyObjectByType<SeineBarge>() != null, "센강 유람선 있음", "SeineBarge가 없습니다.", warnOnly: true);
                 var seineVideo = GameObject.Find("SeineVideoScreen");
+                if (seineVideo == null)
+                    report.Check(Object.FindAnyObjectByType<SeineBarge>() != null, "센강 유람선 있음", "SeineBarge가 없습니다.", warnOnly: true);
+                else
+                {
+                    // 실사 영상 앞을 코드 다리·유람선·원경 건물이 가리면 안 된다 (2026-11-18: 다리가 영상 속 배를 가로지름, 원경 건물이 화면 앞으로 튀어나옴)
+                    float screenZ = seineVideo.transform.position.z;
+                    var blockers = Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude)
+                        .Where(r => r.gameObject != seineVideo && r.bounds.min.z > 30f && r.bounds.min.z < screenZ && r.bounds.max.y > 0.5f
+                                    && (r.name.StartsWith("Bridge_") || r.transform.parent != null && (r.transform.parent.name == "FarSkyline" || r.GetComponentInParent<SeineBarge>() != null)))
+                        .Select(r => r.name).Distinct().ToList();
+                    report.Check(blockers.Count == 0, "센강 영상 앞을 가리는 코드 다리·원경·유람선 없음",
+                        "센강 영상 화면 앞에 코드 물체가 있습니다: " + string.Join(", ", blockers.Take(5)), warnOnly: true);
+                    var vp = seineVideo.GetComponent<UnityEngine.Video.VideoPlayer>();
+                    var clipPath = vp != null && vp.clip != null ? AssetDatabase.GetAssetPath(vp.clip) : null;
+                    var vimp = clipPath != null ? AssetImporter.GetAtPath(clipPath) as VideoClipImporter : null;
+                    bool small = vp != null && vp.clip != null && vp.clip.width <= 1920;
+                    report.Check(small, $"센강 영상 {vp?.clip?.width}x{vp?.clip?.height} (Quest 2: 1080p 이하)",
+                        $"센강 영상이 {vp?.clip?.width}x{vp?.clip?.height}입니다. Quest 2는 VR과 함께 4K 디코딩이 무겁다 → 영상 Import 설정에서 Transcode + Half Res(1080p)", warnOnly: true);
+                }
                 report.Info(seineVideo != null ? "센강 실사 영상 배경 사용 중 (출처를 docs/CREDITS.md에 적었는지 확인)" : "센강 실사 영상 없음 → 코드 원경 (ThirdParty/Backdrops/SeineVideo.mp4를 넣으면 사용)");
                 report.Info($"비둘기 무리 {Object.FindObjectsByType<PigeonFlock>(FindObjectsInactive.Include).Length}개, 이야기 구역 {Object.FindObjectsByType<RatStoryTrigger>(FindObjectsInactive.Include).Length}개");
                 var goal = flow != null ? new SerializedObject(flow).FindProperty("goalVolume")?.objectReferenceValue as Collider : null;

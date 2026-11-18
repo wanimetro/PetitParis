@@ -196,7 +196,7 @@ namespace PetitParis.EditorTools
             PetitParisGameplayKit.Pigeons("Pigeons_Quai_E", events, new Vector3(2.2f, 0f, 24.8f), 3, 0.4f, m, 5);
             PetitParisGameplayKit.Pigeons("Pigeons_Road", events, new Vector3(2.4f, 0f, 3.2f), 2, 0.4f, m, 7);
             BuildKitchenDoorGate(events, m);
-            BuildSeineBarge(events, p, m);
+            if (FindSeineVideo() == null) BuildSeineBarge(events, p, m); // 실사 영상이 있으면 영상 속 배가 있으므로 코드 유람선은 만들지 않는다
 
             var chaseGO = new GameObject("ChaseEvent_BroomWaiter");
             chaseGO.transform.SetParent(events, false);
@@ -495,23 +495,36 @@ namespace PetitParis.EditorTools
             LampPost("QuaiLamp_E", quai, new Vector3(2.6f, 0f, 25.25f), p);
 
             // 센강과 강 건너 풍경 (Unlit + 안개 → 해 질 녘 원경)
-            TexBoxXZ("Seine_Water", quai, -40f, 40f, 25.9f, 80f, -1.2f, -0.9f, p.water, 6f, false);
-            TexBoxXZ("Seine_QuaiFace", quai, -40f, 40f, 25.9f, 26.1f, -1.0f, 0f, p.limestone, 1.2f, false);
             // 실제 센강 영상(선택)이 있으면 강 건너 풍경을 영상으로, 없으면 코드로 만든 원경
+            bool hasVideo = FindSeineVideo() != null;
+            // 영상이 있으면 화면 좌우 바깥(고개를 45° 넘게 돌렸을 때)에도 강물·강둑·건물이 이어지도록 넓게 만든다
+            float waterHalf = hasVideo ? 150f : 40f;
+            TexBoxXZ("Seine_Water", quai, -waterHalf, waterHalf, 25.9f, 80f, -1.2f, -0.9f, p.water, 6f, false);
+            TexBoxXZ("Seine_QuaiFace", quai, -40f, 40f, 25.9f, 26.1f, -1.0f, 0f, p.limestone, 1.2f, false);
             bool video = AddSeineVideoIfPresent(quai);
-            FarSkyline("FarSkyline", quai, 63f, 70f, -38f, 38f, p, 7); // 영상이 있으면 영상 화면 뒤에 가려지고, 화면 양옆을 채운다
-            if (!video)
+            if (video)
             {
+                // 영상 화면(z SeineVideoDistanceZ) 뒤쪽, 화면 좌우 바깥에만 코드 원경을 둔다 → 화면 끝이 맨 하늘로 끊기지 않는다.
+                // 건물 깊이가 4m라 zNear를 화면보다 3m 이상 뒤에 둔다 (예전 63m는 앞면이 61.8m로 화면 앞에 튀어나왔다)
+                float edge = SeineVideoWidth * 0.5f - 2f, zNear = SeineVideoDistanceZ + 3f;
+                TexBoxXZ("FarBank_W", quai, -150f, -edge, zNear - 1f, zNear + 2f, -1f, 0.8f, p.farHaze, 4f, false);
+                TexBoxXZ("FarBank_E", quai, edge, 150f, zNear - 1f, zNear + 2f, -1f, 0.8f, p.farHaze, 4f, false);
+                FarSkyline("FarSkyline_W", quai, zNear, zNear + 7f, -150f, -edge, p, 7);
+                FarSkyline("FarSkyline_E", quai, zNear, zNear + 7f, edge, 150f, p, 11);
+            }
+            else
+            {
+                FarSkyline("FarSkyline", quai, 63f, 70f, -38f, 38f, p, 7);
                 TexBoxXZ("FarBank", quai, -40f, 40f, 58f, 62f, -1f, 0.8f, p.farHaze, 4f, false);
                 EiffelSilhouette("EiffelTower", quai, new Vector3(-9f, -1f, 60f), 30f, p.eiffel); // 난간 앞에서 정면 약간 왼쪽에 크게 (최종 수정)
-            }
 
-            // 다리와 다리 위 가로등 불빛
-            TexBoxXZ("Bridge_Deck", quai, -40f, 40f, 40f, 42.5f, 2.0f, 2.6f, p.limestone, 2f, false);
-            foreach (float x in new[] { -20f, -8f, 4f, 16f })
-                TexBoxXZ($"Bridge_Pier_{x}", quai, x, x + 1.5f, 40.2f, 42.3f, -1f, 2.0f, p.limestone, 2f, false);
-            for (float x = -30f; x <= 30f; x += 5f)
-                RemoveCollider(Sphere("Bridge_Light", quai, new Vector3(x, 3.1f, 40.1f), 0.35f, p.bulb));
+                // 다리와 다리 위 가로등 불빛 (영상이 있으면 영상 앞을 가로질러 배·나무를 가리므로 만들지 않는다)
+                TexBoxXZ("Bridge_Deck", quai, -40f, 40f, 40f, 42.5f, 2.0f, 2.6f, p.limestone, 2f, false);
+                foreach (float x in new[] { -20f, -8f, 4f, 16f })
+                    TexBoxXZ($"Bridge_Pier_{x}", quai, x, x + 1.5f, 40.2f, 42.3f, -1f, 2.0f, p.limestone, 2f, false);
+                for (float x = -30f; x <= 30f; x += 5f)
+                    RemoveCollider(Sphere("Bridge_Light", quai, new Vector3(x, 3.1f, 40.1f), 0.35f, p.bulb));
+            }
 
             if (!video) AddPhotoBackdropIfPresent(quai);
         }
@@ -525,16 +538,30 @@ namespace PetitParis.EditorTools
         /// </summary>
         const float SeineVideoHorizon = 0.17f;  // 영상 속 건너편 강변(물가)의 높이 (아래에서 비율). 현재 영상(배 위에서 본 에펠탑) 기준 0.17
         const float SeineVideoDistanceZ = 62f;  // 화면 위치 (CP5 난간에서 약 37m)
+        // 화면 폭 (월드 m). 110m = CP5에서 정면 ±56°. 폭만 늘리면 같은 거리에서 영상이 확대돼 에펠탑이 시야 위로 빠진다
+        // (2026-11-18: 240m로 시험 → 배가 화면을 채우고 에펠탑이 잘림). 화면 바깥은 코드 원경(FarSkyline_W/E)이 잇는다
         const float SeineVideoWidth = 110f;
+
+        // 실사 영상 배경은 기본으로 쓰지 않는다 (2026-11-18 Quest 2: 평평한 스크린처럼 보이고, 영상 속 카메라가 혼자 움직이고,
+        // 시차가 없고, 안개 때문에 분홍빛으로 바램 + 화풍이 맞지 않음). 대신 3D 원경(BuildSeineBackdrop3D). 다시 쓰려면 true + 영상 파일
+        static readonly bool UseSeineVideo = false; // const면 아래 코드가 "도달할 수 없음" 경고가 난다
+
+        /// <summary>ThirdParty/Backdrops/의 SeineVideo 영상 (없으면 null). 영상이 있으면 코드 원경·다리·유람선을 만들지 않는다.</summary>
+        static UnityEngine.Video.VideoClip FindSeineVideo()
+        {
+            if (!UseSeineVideo) return null;
+            const string folder = PetitParisPaths.Root + "/ThirdParty/Backdrops";
+            if (!AssetDatabase.IsValidFolder(folder)) return null;
+            var guids = AssetDatabase.FindAssets("SeineVideo t:VideoClip", new[] { folder });
+            if (guids.Length == 0) return null;
+            var clip = AssetDatabase.LoadAssetAtPath<UnityEngine.Video.VideoClip>(AssetDatabase.GUIDToAssetPath(guids[0]));
+            return clip != null && clip.width > 0 && clip.height > 0 ? clip : null;
+        }
 
         static bool AddSeineVideoIfPresent(Transform parent)
         {
-            const string folder = PetitParisPaths.Root + "/ThirdParty/Backdrops";
-            if (!AssetDatabase.IsValidFolder(folder)) return false;
-            var guids = AssetDatabase.FindAssets("SeineVideo t:VideoClip", new[] { folder });
-            if (guids.Length == 0) return false;
-            var clip = AssetDatabase.LoadAssetAtPath<UnityEngine.Video.VideoClip>(AssetDatabase.GUIDToAssetPath(guids[0]));
-            if (clip == null || clip.width == 0 || clip.height == 0) return false;
+            var clip = FindSeineVideo();
+            if (clip == null) return false;
 
             string rtPath = PetitParisPaths.Materials + "/PP_SeineVideoRT.renderTexture";
             var rt = AssetDatabase.LoadAssetAtPath<RenderTexture>(rtPath);

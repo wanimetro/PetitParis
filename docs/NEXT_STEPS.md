@@ -27,6 +27,18 @@
   - 고침: 메뉴 규칙의 숨을 곳 문장에 통·양동이 추가
   - 그대로 둠: CP7 상자는 요리사 손이 닿는 곳이라 가만히 있으면 리스폰 후 다시 맞음 (무적 2.5초 + "옆으로 피해요" 안내). 빵집 간판 "PAIN CROISSANT"가 줄바꿈되어 "CROISSAN / T"로 보임
   - 참고: Unity 창에 포커스가 없으면 에디터가 프레임을 거의 돌리지 않고 키보드도 꺼진다 → MCP로 키 입력을 넣을 때 `InputSystem.EnableDevice(Keyboard.current)` 후 누르기/떼기를 다른 호출로 나눈다. Play 중에 스크립트를 고치면 입력 액션이 끊겨 버튼이 안 먹을 수 있다 (에디터 전용)
+- **Quest 2 실기기 1차 (2026-11-18 저녁, USB Build And Run)**
+  - 연결: adb `unauthorized`가 계속되고 헤드셋에 "USB 디버깅 허용" 창이 안 뜸 → PC의 adb 키를 새로 만들고(`~/.android/adbkey` 백업 후 재시작) Meta Horizon Link를 끄고 케이블을 다시 꽂으니 허용됨. adb는 PATH에 없고 Unity 내장 SDK(`.../AndroidPlayer/SDK/platform-tools/adb.exe`)를 쓴다
+  - 설치·실행 OK (IL2CPP 빌드 약 5분). 사용자: "머리를 움직이면 세상이 따라 흔들림"
+  - 원인 (VrApi logcat): 게임 중 **45~50fps, GPU 16~18ms** (72fps 예산 13.9ms), CPU는 여유 → GPU 병목으로 재투영 떨림
+  - 고침: `RatQuestPerformance` — Android 실기기에서만 카메라 URP 후처리 끔 + 고정 포비티드 렌더링 1.0, OpenXR Foveated Rendering(Android) 켬, Validate 항목 추가. PC·에디터는 그대로(후처리 켬). **Quest 2에서 72fps·흔들림 재확인 필요 (미검증)**
+- **에디터 재확인 (2026-11-18 밤, main 5884da3 병합 후, PC 모드 Play + 순간이동)**
+  - 컴파일 에러 0 (Validator의 FindObjectsSortMode 경고 정리) / 메뉴 3 → 4: FAIL 0 / WARN 0
+  - OK: 테라스 E·F·A 출발 후 셋 다 쥐를 알아챔(로그) / 자전거 2대 다른 차선에서 엇갈려 왕복 / CP4 도착·리스폰 지점 CP4 / 통·양동이 안에서 안전 / 비둘기 따라옴→부스러기 쪼기(점수 4→0)→숨으면 포기·떠남 / 요리사 발견→붉은 그림자·주걱→CP7 복귀 / 빗자루 추격 이벤트 시작·숨을 곳 안내 / 빵집 바게트 낙하 / 배경음·아코디언·발소리·자전거·빗자루 소리 재생 / 치즈 도착 화면
+  - 고침: **CP7에서 리스폰 후 가만히 있으면 2.5초마다 계속 주걱에 맞음**(20초에 4번) → 리스폰 지점에서 0.3m 벗어나기 전에는 치지 않음 (`ChefSwat.IsWaitingForLeave`, Validate 항목 추가). 확인: 리스폰 후 17초 동안 추가 실패 없음
+  - 고침: 숨었을 때 손목 상태 줄 "안전 · 통조림 통 안" → "숨는 중 · 통조림 통 안" (`RatStatusPanel`)
+  - 참고(테스트 방법): 높은 곳에서 바닥으로 순간이동하면 `RatFallRecovery`가 큰 낙하로 보고 원래 자리로 되돌린다 → 순간이동 테스트 중에는 잠시 끈다. 에디터는 포커스가 없으면 키 입력이 액션까지 안 가서, 걸어 들어가기는 이번에 순간이동으로 대신함
+  - Quest 2에서 확인 필요: 양손 흔들기 달리기(`RatArmSwing`) 기준 속도, 진동, 실제 크기감, 72fps·흔들림, 소리 크기
 
 ## 0-1. 2026-11-16 AI 리뷰 이슈 수정 + Quest 2 준비
 `docs/QUEST2_ISSUE_RESOLUTION.md` 참고 (수정 내역, 상태, Quest 2 빌드 순서와 체크리스트). 모두 Unity Play·실기기 **미검증**.

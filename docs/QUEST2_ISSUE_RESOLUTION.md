@@ -321,6 +321,16 @@
   - 다시 시작할 때 `AudioListener.pause`·`Time.timeScale`을 초기화 (일시 정지 메뉴가 남긴 무음 방지)
 - **수정 파일**: `PetitParisAudio.cs`(CityAmbience, MusetteLoop, Loudness3D), `RatAmbience.cs`(새), `PetitParisGameFlow.cs`, `PetitParisLevelBuilder.cs`, `PetitParisValidator.cs`
 - **검증 필요**: Quest 2 스피커로 음악·배경음 크기(너무 크지 않은지), 발소리 방향감, 헤드셋 볼륨이 0이 아닌지. 그래도 무음이면 Quest 시스템 메뉴로 나갔다 온 뒤 X 메뉴가 열린 채로 일시 정지돼 있는지 확인 (일시 정지 중에는 소리도 멈춘다)
+- **2026-11-18 확인**: PC 에디터 Play에서 거리 배경음(`pp_city_ambience`)·아코디언(`pp_musette`)·발소리·자전거·빗자루 소리가 재생 중(AudioSource isPlaying, AudioListener 일시 정지 아님). **Quest 2 스피커로 들리는지는 아직 사용자 확인 전 (미검증)** — 첫 실기기 실행은 화면 흔들림(Q2-05) 때문에 소리 확인까지 가지 못함
+
+### Q2-05 머리를 움직이면 세상이 따라 흔들림 — FIXED (코드) / NEEDS_DEVICE_TEST
+- **문제 상황 (2026-11-18 Quest 2 실기기)**: 게임 실행 중 머리를 움직이면 화면이 심하게 흔들림
+- **원인 (logcat VrApi 측정)**: 게임 중 45~50fps, 앱 GPU 시간 16~18ms (72Hz 예산 13.9ms), GPU 사용률 0.85~0.98, CPU 0.2~0.3 → GPU 병목. 프레임을 못 맞추면 Quest가 이전 프레임을 재투영해서 머리를 돌릴 때 떨려 보인다. 카메라 코드(TrackedPoseDriver Update+BeforeRender, 바인딩) 문제는 아님
+- **수정 내용**
+  - `RatQuestPerformance`(새, Android 실기기만): 카메라 URP 후처리 끔 (중간 렌더 텍스처 + 전체 화면 패스 제거), 고정 포비티드 렌더링 1.0 (`XRDisplaySubsystem.foveatedRenderingLevel`)
+  - OpenXR Foveated Rendering 기능(Android) 켬, Validate 항목 추가
+  - PC·에디터는 그대로 (후처리 색감 유지). Quest에서는 색 보정(Tonemapping·Color Adjustments)이 빠져 색감이 약간 달라질 수 있음
+- **검증 필요**: Quest 2에서 logcat `VrApi FPS=72/72` 유지, 머리 돌릴 때 떨림 없음. 그래도 GPU가 모자라면 다음 순서: 그림자 끄기 → MSAA 4x→2x → Render Scale 0.9
 
 ### 이번에 다시 확인할 순서 (PC 에디터 → Quest 2)
 1. PC Claude: git pull → 메뉴 3번(씬 재생성) → 4번(Validate: Q2-02/03 점검 통과 확인)

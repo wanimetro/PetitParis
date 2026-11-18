@@ -188,7 +188,10 @@ namespace PetitParis.EditorTools
                 }
                 report.Check(walkers.Length == 6, "보행자 6명 (테라스 3명, 빵집 셰프, 빗자루 웨이터, 주방 셰프)", $"보행자가 {walkers.Length}명입니다 (기획: 6명).", warnOnly: true);
                 report.Check(Object.FindAnyObjectByType<ChefSwat>() != null, "주방 요리사 주걱 반응(ChefSwat) 있음", "ChefSwat가 없습니다 (메뉴 3번).", warnOnly: true);
-                int flocks = Object.FindObjectsByType<PigeonFlock>(FindObjectsSortMode.None).Length;
+                report.Check(typeof(ChefSwat).GetProperty(nameof(ChefSwat.IsWaitingForLeave)) != null,
+                    "주걱: 리스폰 직후 제자리에서는 다시 치지 않음 (CP7 연속 실패 방지)",
+                    "ChefSwat에 리스폰 대기(WaitForLeave)가 없습니다 → CP7에서 2.5초마다 계속 맞습니다.");
+                int flocks = Object.FindObjectsByType<PigeonFlock>(FindObjectsInactive.Exclude).Length;
                 report.Check(flocks > 0 && PigeonFlock.PeckRadius > PigeonFlock.RingRadius,
                     $"비둘기 무리 {flocks}개, 쪼기 거리 {PigeonFlock.PeckRadius}m > 둘러싸는 원 {PigeonFlock.RingRadius}m",
                     $"비둘기 무리가 없거나 쪼기 거리({PigeonFlock.PeckRadius}m)가 둘러싸는 원({PigeonFlock.RingRadius}m)보다 작아 가만히 있으면 쪼지 않습니다.", warnOnly: true);
@@ -346,6 +349,8 @@ namespace PetitParis.EditorTools
                     "Android OpenXR > Enabled Interaction Profiles에 Oculus Touch Controller Profile이 없습니다. Quest 2 Touch 컨트롤러는 이 프로필이 필요합니다 (Touch Plus는 Quest 3용).");
                 report.Check(FeatureEnabled(text, "MetaQuestFeature Android"), "Android: Meta Quest Support 켜짐",
                     "Android OpenXR > OpenXR Feature Groups에서 Meta Quest Support를 체크하세요.");
+                report.Check(FeatureEnabled(text, "FoveatedRenderingFeature Android"), "Android: Foveated Rendering 켜짐 (Quest 2 GPU 절약, RatQuestPerformance)",
+                    "Android OpenXR > Features에서 Foveated Rendering을 켜세요. 꺼져 있으면 Quest 2에서 GPU가 모자라 45~50fps로 떨어지고 머리를 돌릴 때 화면이 흔들립니다.");
                 if (text.Contains("m_Name: MetaQuestFeature Android"))
                     report.Check(text.Contains("quest2") || text.Contains("Quest2") || text.Contains("targetDevices"),
                         "Meta Quest Support 대상 기기 설정 있음", "Meta Quest Support의 Target Devices에서 Quest 2를 체크했는지 확인하세요.", warnOnly: true);

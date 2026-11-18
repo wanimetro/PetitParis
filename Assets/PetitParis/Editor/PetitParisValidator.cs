@@ -191,10 +191,19 @@ namespace PetitParis.EditorTools
                 report.Check(typeof(ChefSwat).GetProperty(nameof(ChefSwat.IsWaitingForLeave)) != null,
                     "주걱: 리스폰 직후 제자리에서는 다시 치지 않음 (CP7 연속 실패 방지)",
                     "ChefSwat에 리스폰 대기(WaitForLeave)가 없습니다 → CP7에서 2.5초마다 계속 맞습니다.");
-                int flocks = Object.FindObjectsByType<PigeonFlock>(FindObjectsInactive.Exclude).Length;
-                report.Check(flocks > 0 && PigeonFlock.PeckRadius > PigeonFlock.RingRadius,
-                    $"비둘기 무리 {flocks}개, 쪼기 거리 {PigeonFlock.PeckRadius}m > 둘러싸는 원 {PigeonFlock.RingRadius}m",
-                    $"비둘기 무리가 없거나 쪼기 거리({PigeonFlock.PeckRadius}m)가 둘러싸는 원({PigeonFlock.RingRadius}m)보다 작아 가만히 있으면 쪼지 않습니다.", warnOnly: true);
+                var flockList = Object.FindObjectsByType<PigeonFlock>(FindObjectsInactive.Exclude);
+                foreach (var flock in flockList)
+                {
+                    var fso = new SerializedObject(flock);
+                    float keep = fso.FindProperty("keepDistance")?.floatValue ?? 0f;
+                    float touch = fso.FindProperty("touchRadius")?.floatValue ?? 0f;
+                    bool template = fso.FindProperty("crumbTemplate")?.objectReferenceValue != null;
+                    int bonus = fso.FindProperty("shooBonusCrumbs")?.intValue ?? 0;
+                    report.Check(keep > touch && (bonus == 0 || template),
+                        $"{flock.name}: {keep * 100f:0}cm 밖에서 멈춤, {touch * 100f:0}cm 안으로 다가가면 날아감, 부스러기 {bonus}개",
+                        $"{flock.name}: 멈추는 거리({keep:0.00}m)가 쫓아내는 거리({touch:0.00}m)보다 커야 하고, 보너스 부스러기 템플릿이 연결돼 있어야 합니다 (메뉴 3번).", warnOnly: true);
+                }
+                report.Check(flockList.Length > 0, $"비둘기 무리 {flockList.Length}개", "비둘기 무리가 없습니다.", warnOnly: true);
 
                 // AI 리뷰 P1 수정 사항 점검
                 var flowSo = flow != null ? new SerializedObject(flow) : null;
@@ -266,6 +275,9 @@ namespace PetitParis.EditorTools
                     var fso = new SerializedObject(f);
                     report.Check(fso.FindProperty("items")?.arraySize > 0 && fso.FindProperty("zone")?.objectReferenceValue != null, $"{f.name}: 떨어질 물건·구역 연결", $"{f.name}의 items 또는 zone이 비어 있습니다.", warnOnly: true);
                 }
+                report.Check(Object.FindAnyObjectByType<KitchenDoorGate>() != null, "주방 뒷문 게이트(센강 난간 CP5에서 열림) 있음",
+                    "KitchenDoorGate가 없습니다 (메뉴 3번으로 다시 생성).", warnOnly: true);
+                report.Check(Object.FindAnyObjectByType<SeineBarge>() != null, "센강 유람선 있음", "SeineBarge가 없습니다.", warnOnly: true);
                 report.Info($"비둘기 무리 {Object.FindObjectsByType<PigeonFlock>(FindObjectsInactive.Include).Length}개, 이야기 구역 {Object.FindObjectsByType<RatStoryTrigger>(FindObjectsInactive.Include).Length}개");
                 var goal = flow != null ? new SerializedObject(flow).FindProperty("goalVolume")?.objectReferenceValue as Collider : null;
                 report.Check(goal != null && goal.bounds.min.y > 0.5f, "목적지 = 주방 식탁 위 치즈", "목적지(goalVolume)가 식탁 위(높이 0.9m)가 아닙니다.", warnOnly: true);

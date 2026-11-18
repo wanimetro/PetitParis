@@ -261,6 +261,9 @@ namespace PetitParis.EditorTools
                 e.FindPropertyRelative("wingR").objectReferenceValue = wingR;
             }
             SetObject(so, "flutterAudio", root.gameObject.AddComponent<AudioSource>());
+            var template = Crumb("PigeonBonusTemplate", root, center + Vector3.down * 0.2f, CrumbPickup.Kind.Crumb, m);
+            template.gameObject.SetActive(false);
+            SetObject(so, "crumbTemplate", template);
             so.ApplyModifiedPropertiesWithoutUndo();
             return flock;
         }

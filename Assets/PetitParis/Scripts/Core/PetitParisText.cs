@@ -90,13 +90,18 @@ namespace PetitParis
         public const string HazardBike = "자전거";
         public const string HazardBroom = "빗자루";
         public const string HazardBaguette = "바게트";
+        public const string HazardSpatula = "주걱";
+        public const string FailSpatula = "요리사 주걱에 맞았어요!\n붉은 그림자가 보이면 옆으로 피해요";
+        public const string MessageChefSwat = "요리사가 주걱을 휘둘러요!\n붉은 그림자를 피해요";
+        public const string MessagePigeonPeck = "비둘기가 빵 부스러기를 쪼아 갔어요!\n숨으면 비둘기가 떠나요";
+        public const string MessagePigeons = "비둘기들이 따라와요! 숨을 곳으로";
         public const string MessageFallRecovered = "떨어질 뻔! 올라가던 자리로 돌아왔어요";
         public const string MessageHideHintFormat = "숨을 곳: {0} (화살표 방향)";
         public const string MessagePaused = "일시 정지";
         public const string MessageComfortOn = "편안함 모드를 켰어요";
         public const string MessageComfortOff = "편안함 모드를 껐어요";
         /// <summary>안전 구역 이름 (빌더에서 쓰는 문자열. 폰트 미리 채우기용으로 여기 모아 둔다).</summary>
-        public const string ZoneNames = "벽 틈 의자 아래 벤치 아래 팔레트 밑 종이 상자 안 와인 상자 안 빵 바구니 밑 조리대 밑 식탁 밑";
+        public const string ZoneNames = "통조림 통 안 양동이 밑 벽 틈 의자 아래 벤치 아래 팔레트 밑 종이 상자 안 와인 상자 안 빵 바구니 밑 조리대 밑 식탁 밑";
         public const string MessageFell = "떨어졌어요! 체크포인트로 돌아갑니다";
         public const string MessageCrumbsKept = "모은 빵 부스러기를 지켰어요!";
         public const string MessageCrumbsLostFormat = "빵 부스러기 {0}개를 떨어뜨렸어요";

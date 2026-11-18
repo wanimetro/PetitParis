@@ -155,6 +155,20 @@ namespace PetitParis
             if (gameFlow != null) gameFlow.PostMessage(string.Format(PetitParisText.MessageCrumbsLostFormat, lost), 1); // 실패 메시지(2) 뒤에 이어서
         }
 
+        /// <summary>체크포인트 전에 모은 조각 하나를 떨어뜨린다 (비둘기가 쪼아 감). 떨어뜨렸으면 true.</summary>
+        public bool DropOne()
+        {
+            if (carried.Count == 0) return false;
+            var c = carried[carried.Count - 1];
+            carried.RemoveAt(carried.Count - 1);
+            if (c == null) return false;
+            Score -= c.Points;
+            CollectedCount--;
+            if (c.IsGolden) GoldenCount--;
+            c.Restore();
+            return true;
+        }
+
         /// <summary>별 개수 (0~3). arrived = 목적지에 도착했는지.</summary>
         public int Stars(bool arrived)
         {

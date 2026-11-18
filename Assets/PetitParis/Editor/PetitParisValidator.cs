@@ -361,6 +361,10 @@ namespace PetitParis.EditorTools
                     "Android OpenXR > Enabled Interaction Profiles에 Oculus Touch Controller Profile이 없습니다. Quest 2 Touch 컨트롤러는 이 프로필이 필요합니다 (Touch Plus는 Quest 3용).");
                 report.Check(FeatureEnabled(text, "MetaQuestFeature Android"), "Android: Meta Quest Support 켜짐",
                     "Android OpenXR > OpenXR Feature Groups에서 Meta Quest Support를 체크하세요.");
+                var audioManager = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/AudioManager.asset");
+                int sampleRate = audioManager.Length > 0 ? new SerializedObject(audioManager[0]).FindProperty("m_SampleRate").intValue : 0;
+                report.Check(sampleRate == 48000, "Audio System Sample Rate 48000Hz (Quest 기본)",
+                    $"Audio System Sample Rate가 {sampleRate}입니다 (0 = 자동). Quest 2 실기기에서 자동이면 24000Hz로 잡히고 소리가 안 들렸습니다 → Project Settings > Audio에서 48000.", warnOnly: true);
                 report.Check(FeatureEnabled(text, "FoveatedRenderingFeature Android"), "Android: Foveated Rendering 켜짐 (Quest 2 GPU 절약, RatQuestPerformance)",
                     "Android OpenXR > Features에서 Foveated Rendering을 켜세요. 꺼져 있으면 Quest 2에서 GPU가 모자라 45~50fps로 떨어지고 머리를 돌릴 때 화면이 흔들립니다.");
                 if (text.Contains("m_Name: MetaQuestFeature Android"))

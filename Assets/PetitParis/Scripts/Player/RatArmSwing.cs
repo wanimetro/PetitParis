@@ -16,9 +16,9 @@ namespace PetitParis
     {
         [SerializeField] bool enableArmSwing = true;
         [Tooltip("이 속도(m/s, 머리 기준 손 속도) 이상으로 두 손을 흔들면 빨라지기 시작한다.")]
-        [SerializeField, Range(0.1f, 2f)] float minHandSpeed = 0.5f;
+        [SerializeField, Range(0.1f, 2f)] float minHandSpeed = 0.3f; // Quest 2 실측: 가만히 0.0~0.1, 흔들 때 0.7~1.4 m/s (2026-11-18)
         [Tooltip("이 속도에서 최고 배율.")]
-        [SerializeField, Range(0.3f, 4f)] float fullHandSpeed = 1.4f;
+        [SerializeField, Range(0.3f, 4f)] float fullHandSpeed = 0.9f;
         [Tooltip("손 속도 평활 시간(초). 흔들기 한 번의 정지 순간에 끊기지 않게.")]
         [SerializeField, Range(0.05f, 1f)] float smoothTime = 0.25f;
         [Tooltip("흔들기를 멈춘 뒤 원래 속도로 돌아오는 시간(초).")]
@@ -31,6 +31,14 @@ namespace PetitParis
         /// <summary>0 = 흔들지 않음, 1 = 힘껏 흔드는 중.</summary>
         public float SwingFactor { get; private set; }
         public bool IsSwinging => SwingFactor > 0.05f;
+        // 실기기 진단용 (RatQuestDiagnostics)
+        public float LeftHandSpeed => leftSpeed;
+        public float RightHandSpeed => rightSpeed;
+        public bool DevicesFound { get; private set; }
+        public string MissingNode { get; private set; } = "";
+        public string Source { get; private set; } = "";
+
+        RatInputReader input;
 
         void OnDisable()
         {
@@ -41,7 +49,25 @@ namespace PetitParis
         void Update()
         {
             float dt = Time.deltaTime;
-            if (!enableArmSwing || dt <= 0f || !TryGet(XRNode.LeftHand, out var l) || !TryGet(XRNode.RightHand, out var r) || !TryGet(XRNode.Head, out var h))
+            // 1순위: 손 모델을 움직이는 Input System 액션과 같은 값 (실기기에서 손이 따라오면 여기서도 읽힌다)
+            // 2순위: UnityEngine.XR.InputDevices (예전 방식)
+            if (input == null) input = GetComponentInParent<RatInputReader>();
+            bool hasL, hasR, hasH;
+            Vector3 l, r, h;
+            if (input != null && input.IsLeftPositionTracked && input.IsRightPositionTracked && input.IsHeadTracked)
+            {
+                l = input.RawLeftPosition; r = input.RawRightPosition; h = input.RawHeadPosition;
+                hasL = hasR = hasH = true;
+                Source = "InputSystem";
+            }
+            else
+            {
+                hasL = TryGet(XRNode.LeftHand, out l); hasR = TryGet(XRNode.RightHand, out r); hasH = TryGet(XRNode.Head, out h);
+                Source = "XRInputDevices";
+            }
+            DevicesFound = hasL && hasR && hasH;
+            MissingNode = (hasL ? "" : "L") + (hasR ? "" : "R") + (hasH ? "" : "H");
+            if (!enableArmSwing || dt <= 0f || !DevicesFound)
             {
                 hasLast = false;
                 SwingFactor = Mathf.MoveTowards(SwingFactor, 0f, dt / Mathf.Max(0.01f, releaseTime));
@@ -68,7 +94,10 @@ namespace PetitParis
         {
             position = default;
             var device = InputDevices.GetDeviceAtXRNode(node);
-            return device.isValid && device.TryGetFeatureValue(CommonUsages.devicePosition, out position);
+            if (!device.isValid) return false;
+            if (device.TryGetFeatureValue(CommonUsages.devicePosition, out position)) return true;
+            // OpenXR 머리 장치는 centerEyePosition만 줄 수 있다
+            return node == XRNode.Head && device.TryGetFeatureValue(CommonUsages.centerEyePosition, out position);
         }
     }
 }

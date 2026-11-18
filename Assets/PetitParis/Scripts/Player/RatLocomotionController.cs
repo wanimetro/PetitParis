@@ -48,7 +48,7 @@ namespace PetitParis
         [SerializeField, Range(1f, 3f)] float runMultiplier = 1.8f;
 
         [Tooltip("양손 흔들기(RatArmSwing) 최고 배율. 스틱을 안 밀고 흔들면 바라보는 방향으로 달린다.")]
-        [SerializeField, Range(1f, 3f)] float armSwingMultiplier = 2f;
+        [SerializeField, Range(1f, 3f)] float armSwingMultiplier = 2.5f;
         [SerializeField] RatArmSwing armSwing;
 
         [Tooltip("공중에서의 조작 비율.")]

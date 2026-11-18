@@ -321,6 +321,13 @@
   - 다시 시작할 때 `AudioListener.pause`·`Time.timeScale`을 초기화 (일시 정지 메뉴가 남긴 무음 방지)
 - **수정 파일**: `PetitParisAudio.cs`(CityAmbience, MusetteLoop, Loudness3D), `RatAmbience.cs`(새), `PetitParisGameFlow.cs`, `PetitParisLevelBuilder.cs`, `PetitParisValidator.cs`
 - **검증 필요**: Quest 2 스피커로 음악·배경음 크기(너무 크지 않은지), 발소리 방향감, 헤드셋 볼륨이 0이 아닌지. 그래도 무음이면 Quest 시스템 메뉴로 나갔다 온 뒤 X 메뉴가 열린 채로 일시 정지돼 있는지 확인 (일시 정지 중에는 소리도 멈춘다)
+- **2026-11-18 Quest 2 실기기 원인 확정 — FIXED (기기 설정) / 사용자 확인: "들려"**
+  - 증상: 다른 앱·시스템 소리는 들리는데 PETIT PARIS만 무음
+  - 진단(`RatQuestDiagnostics` logcat `[PetitParis][Diag]`): Unity 최종 출력 RMS 0.03~0.14 (무음 아님), AudioListener 정상, 출력 장치 스피커·볼륨 11/15
+  - 원인: `adb shell dumpsys audio`에서 이 앱 AAudio 플레이어가 **`mutedState:appOps`** — 앱 권한 `PLAY_AUDIO`가 UID 단위로 `ignore` (`adb shell appops get --uid com.DefaultCompany.PetitParis`). OS가 스피커로 보내지 않음. 코드 문제 아님. 왜 ignore가 됐는지는 모름 (설치 때 기본값인지, 헤드셋 설정인지 미확인)
+  - 해결: `Tools/QuestAllowAudio.bat` — `appops set --uid ... PLAY_AUDIO allow` 후 **게임 다시 시작** (이미 열린 오디오 스트림은 권한을 바꿔도 다시 시작 전까지 음소거로 남음). 재실행 후 `mutedState:none`, 소리 들림
+  - 함께 바꿈: Audio System Sample Rate 자동(실기기 24000Hz) → 48000Hz (Validate 항목). 이것만으로는 해결 안 됐음
+  - **발표 전**: 새로 설치(특히 제거 후 설치)하면 다시 막힐 수 있다 → 설치 후 `Tools\QuestAllowAudio.bat` 실행
 - **2026-11-18 확인**: PC 에디터 Play에서 거리 배경음(`pp_city_ambience`)·아코디언(`pp_musette`)·발소리·자전거·빗자루 소리가 재생 중(AudioSource isPlaying, AudioListener 일시 정지 아님). **Quest 2 스피커로 들리는지는 아직 사용자 확인 전 (미검증)** — 첫 실기기 실행은 화면 흔들림(Q2-05) 때문에 소리 확인까지 가지 못함
 
 ### Q2-05 머리를 움직이면 세상이 따라 흔들림 — FIXED (코드) / NEEDS_DEVICE_TEST

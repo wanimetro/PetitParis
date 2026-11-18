@@ -53,7 +53,7 @@ namespace PetitParis
         [SerializeField] InputActionAsset actions;
 
         InputAction move, turn, dash, run, jump, crouch, interact, calibrate, menu, runToggle;
-        InputAction headPosition, headState, leftState, rightState;
+        InputAction headPosition, headState, leftState, rightState, leftPosition, rightPosition;
         bool resolved;
 
         /// <summary>Calibrate 입력이 완료(길게 누르기 성공)되면 호출된다.</summary>
@@ -85,6 +85,11 @@ namespace PetitParis
         public int RightTrackingState => ReadInt(rightState);
         public bool IsHeadTracked => (HeadTrackingState & 3) != 0;
         public Vector3 RawHeadPosition => headPosition != null && headPosition.enabled ? headPosition.ReadValue<Vector3>() : Vector3.zero;
+        public bool IsLeftPositionTracked => (LeftTrackingState & 1) != 0;
+        public bool IsRightPositionTracked => (RightTrackingState & 1) != 0;
+        /// <summary>컨트롤러 실제 위치 (추적 공간, 실제 미터). 손 모델(TrackedPoseDriver)과 같은 입력 → 양손 흔들기(RatArmSwing)에 쓴다.</summary>
+        public Vector3 RawLeftPosition => leftPosition != null && leftPosition.enabled ? leftPosition.ReadValue<Vector3>() : Vector3.zero;
+        public Vector3 RawRightPosition => rightPosition != null && rightPosition.enabled ? rightPosition.ReadValue<Vector3>() : Vector3.zero;
 
         void Awake()
         {
@@ -115,6 +120,8 @@ namespace PetitParis
             headState = Find(HeadTrackingStateAction);
             leftState = Find(LeftTrackingStateAction);
             rightState = Find(RightTrackingStateAction);
+            leftPosition = Find(LeftPositionAction);
+            rightPosition = Find(RightPositionAction);
 
             var missing = new List<string>();
             foreach (var name in RequiredActionNames)

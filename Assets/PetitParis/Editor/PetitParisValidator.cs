@@ -278,6 +278,8 @@ namespace PetitParis.EditorTools
                 report.Check(Object.FindAnyObjectByType<KitchenDoorGate>() != null, "주방 뒷문 게이트(센강 난간 CP5에서 열림) 있음",
                     "KitchenDoorGate가 없습니다 (메뉴 3번으로 다시 생성).", warnOnly: true);
                 report.Check(Object.FindAnyObjectByType<SeineBarge>() != null, "센강 유람선 있음", "SeineBarge가 없습니다.", warnOnly: true);
+                var seineVideo = GameObject.Find("SeineVideoScreen");
+                report.Info(seineVideo != null ? "센강 실사 영상 배경 사용 중 (출처를 docs/CREDITS.md에 적었는지 확인)" : "센강 실사 영상 없음 → 코드 원경 (ThirdParty/Backdrops/SeineVideo.mp4를 넣으면 사용)");
                 report.Info($"비둘기 무리 {Object.FindObjectsByType<PigeonFlock>(FindObjectsInactive.Include).Length}개, 이야기 구역 {Object.FindObjectsByType<RatStoryTrigger>(FindObjectsInactive.Include).Length}개");
                 var goal = flow != null ? new SerializedObject(flow).FindProperty("goalVolume")?.objectReferenceValue as Collider : null;
                 report.Check(goal != null && goal.bounds.min.y > 0.5f, "목적지 = 주방 식탁 위 치즈", "목적지(goalVolume)가 식탁 위(높이 0.9m)가 아닙니다.", warnOnly: true);

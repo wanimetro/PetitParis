@@ -497,9 +497,14 @@ namespace PetitParis.EditorTools
             // 센강과 강 건너 풍경 (Unlit + 안개 → 해 질 녘 원경)
             TexBoxXZ("Seine_Water", quai, -40f, 40f, 25.9f, 80f, -1.2f, -0.9f, p.water, 6f, false);
             TexBoxXZ("Seine_QuaiFace", quai, -40f, 40f, 25.9f, 26.1f, -1.0f, 0f, p.limestone, 1.2f, false);
-            TexBoxXZ("FarBank", quai, -40f, 40f, 58f, 62f, -1f, 0.8f, p.farHaze, 4f, false);
-            FarSkyline("FarSkyline", quai, 63f, 70f, -38f, 38f, p, 7);
-            EiffelSilhouette("EiffelTower", quai, new Vector3(-9f, -1f, 60f), 30f, p.eiffel); // 난간 앞에서 정면 약간 왼쪽에 크게 (최종 수정)
+            // 실제 센강 영상(선택)이 있으면 강 건너 풍경을 영상으로, 없으면 코드로 만든 원경
+            bool video = AddSeineVideoIfPresent(quai);
+            FarSkyline("FarSkyline", quai, 63f, 70f, -38f, 38f, p, 7); // 영상이 있으면 영상 화면 뒤에 가려지고, 화면 양옆을 채운다
+            if (!video)
+            {
+                TexBoxXZ("FarBank", quai, -40f, 40f, 58f, 62f, -1f, 0.8f, p.farHaze, 4f, false);
+                EiffelSilhouette("EiffelTower", quai, new Vector3(-9f, -1f, 60f), 30f, p.eiffel); // 난간 앞에서 정면 약간 왼쪽에 크게 (최종 수정)
+            }
 
             // 다리와 다리 위 가로등 불빛
             TexBoxXZ("Bridge_Deck", quai, -40f, 40f, 40f, 42.5f, 2.0f, 2.6f, p.limestone, 2f, false);
@@ -508,7 +513,63 @@ namespace PetitParis.EditorTools
             for (float x = -30f; x <= 30f; x += 5f)
                 RemoveCollider(Sphere("Bridge_Light", quai, new Vector3(x, 3.1f, 40.1f), 0.35f, p.bulb));
 
-            AddPhotoBackdropIfPresent(quai);
+            if (!video) AddPhotoBackdropIfPresent(quai);
+        }
+
+        /// <summary>
+        /// 센강 실사 영상(선택): ThirdParty/Backdrops/ 안에 이름에 SeineVideo가 들어간 영상(VideoClip, H.264 MP4 1080p 권장)이 있으면
+        /// 강 건너에 큰 화면으로 반복 재생한다 (소리 없음).
+        /// - 영상 속 수평선(아래에서 SeineVideoHorizon 비율)을 쥐 눈높이(0.12m)에 맞춘다 → 수평선 아래는 우리 강물에 가려지고 건너편 강변·하늘만 보인다
+        /// - 카메라가 고정된(삼각대) 영상만 쓴다. 움직이는 영상(드론·배·패닝)은 VR에서 멀미를 일으킨다
+        /// - 원본 영상 파일은 라이선스상 재배포하지 않는다 (.gitignore). 출처는 docs/CREDITS.md에 적는다
+        /// </summary>
+        const float SeineVideoHorizon = 0.17f;  // 영상 속 건너편 강변(물가)의 높이 (아래에서 비율). 현재 영상(배 위에서 본 에펠탑) 기준 0.17
+        const float SeineVideoDistanceZ = 62f;  // 화면 위치 (CP5 난간에서 약 37m)
+        const float SeineVideoWidth = 110f;
+
+        static bool AddSeineVideoIfPresent(Transform parent)
+        {
+            const string folder = PetitParisPaths.Root + "/ThirdParty/Backdrops";
+            if (!AssetDatabase.IsValidFolder(folder)) return false;
+            var guids = AssetDatabase.FindAssets("SeineVideo t:VideoClip", new[] { folder });
+            if (guids.Length == 0) return false;
+            var clip = AssetDatabase.LoadAssetAtPath<UnityEngine.Video.VideoClip>(AssetDatabase.GUIDToAssetPath(guids[0]));
+            if (clip == null || clip.width == 0 || clip.height == 0) return false;
+
+            string rtPath = PetitParisPaths.Materials + "/PP_SeineVideoRT.renderTexture";
+            var rt = AssetDatabase.LoadAssetAtPath<RenderTexture>(rtPath);
+            int w = (int)Mathf.Min(1920, clip.width), h = Mathf.Max(1, (int)(w * (float)clip.height / clip.width));
+            if (rt == null || rt.width != w || rt.height != h)
+            {
+                if (rt != null) AssetDatabase.DeleteAsset(rtPath);
+                rt = new RenderTexture(w, h, 0) { name = "PP_SeineVideoRT" };
+                AssetDatabase.CreateAsset(rt, rtPath);
+            }
+            var mat = new MaterialLibrary().Unlit("PP_SeineVideo", Color.white);
+            if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", rt);
+            if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", rt);
+            EditorUtility.SetDirty(mat);
+
+            float width = SeineVideoWidth, height = width * clip.height / clip.width;
+            const float eye = 0.12f;
+            var quad = RemoveCollider(GameObject.CreatePrimitive(PrimitiveType.Quad));
+            quad.name = "SeineVideoScreen";
+            quad.transform.SetParent(parent, false);
+            quad.transform.position = new Vector3(-0.3f, eye - height * SeineVideoHorizon + height * 0.5f, SeineVideoDistanceZ);
+            quad.transform.localScale = new Vector3(width, height, 1f);
+            quad.GetComponent<MeshRenderer>().sharedMaterial = mat;
+
+            var vp = quad.AddComponent<UnityEngine.Video.VideoPlayer>();
+            vp.source = UnityEngine.Video.VideoSource.VideoClip;
+            vp.clip = clip;
+            vp.renderMode = UnityEngine.Video.VideoRenderMode.RenderTexture;
+            vp.targetTexture = rt;
+            vp.isLooping = true;
+            vp.playOnAwake = true;
+            vp.skipOnDrop = true;
+            vp.audioOutputMode = UnityEngine.Video.VideoAudioOutputMode.None;
+            Debug.Log("[PetitParis] 센강 영상 배경을 배치했습니다: " + AssetDatabase.GetAssetPath(clip) + " (코드 원경·에펠탑은 생략)");
+            return true;
         }
 
         /// <summary>

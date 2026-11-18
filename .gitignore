@@ -77,3 +77,6 @@ crashlytics-build.properties
 # Unity MCP 스크린샷 (작업용, 커밋하지 않음)
 /[Aa]ssets/Screenshots/
 /[Aa]ssets/Screenshots.meta
+
+# 센강 실사 영상 (Mixkit 등 무료 라이선스지만 원본 파일 재배포 금지 → 각자 내려받아 넣는다)
+/[Aa]ssets/PetitParis/ThirdParty/Backdrops/SeineVideo*

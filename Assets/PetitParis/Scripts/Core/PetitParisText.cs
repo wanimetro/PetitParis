@@ -42,7 +42,7 @@ namespace PetitParis
         public const string HintBike = "자전거 소리를 듣고 건너요";
         public const string HintGoal = "센강 쪽 출구";
         public const string HintSeine = "센강이다!\n…어디선가 치즈 냄새가?";
-        public const string HintKitchenDoor = "비스트로 뒷문\n안으로 들어가요";
+        public const string HintKitchenDoor = "비스트로 뒷문\n난간에서 센강을 보고 오면 열려요";
         public const string HintKitchenClimb = "널빤지를 타고\n식탁 위 치즈까지!";
         public const string HintStart = "벽 틈은 안전해요\n여기서 천천히 연습해요";
         public const string HintAwning = "차양 밑엔 바게트가 안 떨어져요\n요리사 발은 조심!";
@@ -93,8 +93,9 @@ namespace PetitParis
         public const string HazardSpatula = "주걱";
         public const string FailSpatula = "요리사 주걱에 맞았어요!\n붉은 그림자가 보이면 옆으로 피해요";
         public const string MessageChefSwat = "요리사가 주걱을 휘둘러요!\n붉은 그림자를 피해요";
-        public const string MessagePigeonPeck = "비둘기가 빵 부스러기를 쪼아 갔어요!\n숨으면 비둘기가 떠나요";
-        public const string MessagePigeons = "비둘기들이 따라와요! 숨을 곳으로";
+        public const string MessagePigeonPeck = "비둘기가 빵 부스러기를 쪼아 갔어요!\n다가가면 쫓아낼 수 있어요";
+        public const string MessagePigeons = "비둘기가 빵 부스러기를 노려요!\n다가가서 쫓아내요";
+        public const string MessagePigeonShoo = "비둘기를 쫓아냈어요!\n떨어뜨린 빵 부스러기를 주워요";
         public const string MessageFallRecovered = "떨어질 뻔! 올라가던 자리로 돌아왔어요";
         public const string MessageHideHintFormat = "숨을 곳: {0} (화살표 방향)";
         public const string MessagePaused = "일시 정지";
@@ -113,7 +114,8 @@ namespace PetitParis
         public const string MessageBaguetteNearMiss = "아슬아슬! 바게트를 피했어요";
         public const string MessageBaguetteDone = "빵집 주인이 바게트 바구니를 치웠어요. 휴~";
         public const string MessageKitchen = "주방이다! 요리사 발밑을 조심해요";
-        public const string MessageSeine = "센강이 보여요! …어디선가 치즈 냄새가 나요";
+        public const string MessageSeine = "센강이다! 난간 사이로 강을 바라봐요";
+        public const string MessageKitchenDoorOpen = "끼익— 비스트로 뒷문이 열렸어요!\n치즈 냄새를 따라 들어가요";
 
         public const string ShoutNotice = "!";
         public const string ShoutRat = "앗, 쥐다!";

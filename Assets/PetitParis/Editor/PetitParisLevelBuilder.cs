@@ -15,7 +15,7 @@ namespace PetitParis.EditorTools
     ///   공간1  카페 테라스 z 0~7      : 테이블 3세트(의자 아래 안전), 보행자 A가 테라스를 한 바퀴씩 돈다
     ///   공간2  빵집 앞 보도 z 7~13    : 보행자 B가 지그재그 왕복, 벤치 아래 안전 구역
     ///   공간3  좁은 골목 z 13~23      : 중간을 자전거가 가로질러 왕복 (z 16.4~17.6), 북쪽에서 빗자루 웨이터 추격
-    ///   공간4  센강 강변 z 23~26      : 센강과 에펠탑, 비둘기 떼
+    ///   공간4  센강 강변 z 23~26      : 쇠 난간 사이로 센강·에펠탑·유람선, 비둘기. 난간 앞 CP5에 닿아야 주방 뒷문이 열린다
     ///   공간5  비스트로 주방 (x -7.4~-1.9, z 17.8~22.8): 뒷문으로 들어가 널빤지 → 상자 → 식탁 위 치즈 (목적지)
     /// 체크포인트: 시작 → 테라스 끝 의자 아래 → 빵집 벤치 아래 → 자전거 길 앞 벤치 아래 → 강변(주방 뒷문 앞)
     ///
@@ -120,7 +120,7 @@ namespace PetitParis.EditorTools
             flags[2] = Checkpoint("CP2_Bakery_UnderBench", cps, new Vector3(-2.7f, 0f, 10.0f), 0f, m);
             flags[3] = Checkpoint("CP3_Alley_UnderBench", cps, new Vector3(-1.35f, 0f, 15.0f), 0f, m);
             flags[4] = Checkpoint("CP4_Alley_AfterBikeLane", cps, new Vector3(-0.5f, 0f, 17.95f), 0f, m); // 자전거 길을 건넌 직후 (최종 수정)
-            flags[5] = Checkpoint("CP5_Quai_KitchenDoor", cps, new Vector3(-1.9f, 0f, 23.9f), 270f, m);
+            flags[5] = Checkpoint("CP5_Quai_SeineView", cps, new Vector3(-0.3f, 0f, 25.3f), 0f, m); // 센강 난간 앞 (여기 닿으면 주방 뒷문이 열린다)
             // 주방 체크포인트 2개 (ISSUE-19): 널빤지 시작 앞 바닥(요리사 통로 밖), 두 번째 상자 위
             flags[6] = Checkpoint("CP6_Kitchen_PlankStart", cps, new Vector3(-2.1f, 0f, 21.1f), 270f, m);
             flags[7] = Checkpoint("CP7_Kitchen_CrateB", cps, new Vector3(-4.35f, 0.6f, 21.5f), 270f, m);
@@ -159,7 +159,7 @@ namespace PetitParis.EditorTools
             Hint("Hint_Awning", hints, new Vector3(-2.55f, 0.2f, 8.6f), PetitParisText.HintAwning, font);
             Hint("Hint_Start", hints, new Vector3(-2.8f, 0.17f, -0.72f), PetitParisText.HintStart, font);
             Hint("Hint_Bike", hints, new Vector3(-0.5f, 0.2f, 15.95f), PetitParisText.HintBike, font);
-            var goalHint = Hint("Hint_Seine", hints, new Vector3(-0.5f, 0.45f, 24.9f), PetitParisText.HintSeine, font);
+            var goalHint = Hint("Hint_Seine", hints, new Vector3(-1.7f, 0.45f, 24.7f), PetitParisText.HintSeine, font); // 강 전망을 가리지 않게 서쪽으로
             var gso = new SerializedObject(goalHint);
             SetFloat(gso, "fullDistance", 2.5f);
             SetFloat(gso, "fadeDistance", 5f);
@@ -189,9 +189,12 @@ namespace PetitParis.EditorTools
             bso.FindProperty("edgeB").vector3Value = new Vector3(-1.5f, 2.75f, 12.45f);
             bso.FindProperty("edgeOutward").vector3Value = Vector3.right;
             bso.ApplyModifiedPropertiesWithoutUndo();
-            PetitParisGameplayKit.Pigeons("Pigeons_Quai_W", events, new Vector3(-1.9f, 0f, 24.6f), 5, 0.45f, m, 3);
-            PetitParisGameplayKit.Pigeons("Pigeons_Quai_E", events, new Vector3(2.4f, 0f, 24.5f), 6, 0.6f, m, 5);
-            PetitParisGameplayKit.Pigeons("Pigeons_Road", events, new Vector3(2.4f, 0f, 3.2f), 4, 0.5f, m, 7);
+            // 비둘기 (최종 수정: 수를 줄임. 다가가 닿으면 날아가며 빵 부스러기를 떨어뜨린다)
+            PetitParisGameplayKit.Pigeons("Pigeons_Quai_W", events, new Vector3(-1.1f, 0f, 24.5f), 2, 0.3f, m, 3);
+            PetitParisGameplayKit.Pigeons("Pigeons_Quai_E", events, new Vector3(2.2f, 0f, 24.8f), 3, 0.4f, m, 5);
+            PetitParisGameplayKit.Pigeons("Pigeons_Road", events, new Vector3(2.4f, 0f, 3.2f), 2, 0.4f, m, 7);
+            BuildKitchenDoorGate(events, m);
+            BuildSeineBarge(events, p, m);
 
             var chaseGO = new GameObject("ChaseEvent_BroomWaiter");
             chaseGO.transform.SetParent(events, false);
@@ -436,15 +439,56 @@ namespace PetitParis.EditorTools
             FacadeDetails(FacadeFrame("Facade_AlleyEastNorth", alley, new Vector3(0.7f, 0f, 20.3f), Vector3.left), 5.4f, northSpec, p);
         }
 
+        /// <summary>주방 뒷문: 닫혀 있다가 CP5(센강 난간)에 닿으면 열린다. 경첩 = 문틀 서쪽 (-3.4, 0, 23.06), 닫힘 90° / 열림 0°(강변 쪽).</summary>
+        static void BuildKitchenDoorGate(Transform parent, MaterialLibrary m)
+        {
+            const float doorX0 = -3.4f, doorX1 = -2.5f, doorTop = 2.1f, z1 = 23.0f; // BuildKitchen과 같은 값
+            var root = Group("KitchenDoorGate", parent);
+            var hinge = Group("DoorHinge", root);
+            hinge.position = new Vector3(doorX0, 0f, z1 + 0.06f);
+            float w = doorX1 - doorX0 - 0.02f;
+            Box("DoorLeaf", hinge, new Vector3(0.03f, doorTop * 0.5f, w * 0.5f), new Vector3(0.05f, doorTop - 0.02f, w), m.Lit("PP_DoorGreen", new Color(0.18f, 0.32f, 0.26f)));
+            RemoveCollider(Sphere("DoorKnob", hinge, new Vector3(0.07f, 1.0f, w - 0.1f), 0.06f, m.Lit("PP_Brass", new Color(0.85f, 0.65f, 0.3f))));
+            var gate = root.gameObject.AddComponent<KitchenDoorGate>();
+            var so = new SerializedObject(gate);
+            SetObject(so, "hinge", hinge);
+            SetObject(so, "audioSource", root.gameObject.AddComponent<AudioSource>());
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>센강을 천천히 지나가는 유람선 (불 켜진 창, 줄 전구).</summary>
+        static void BuildSeineBarge(Transform parent, Palette p, MaterialLibrary m)
+        {
+            var root = Group("SeineBarge", parent);
+            root.position = new Vector3(-14f, -0.9f, 33f);
+            RemoveCollider(Box("Hull", root, new Vector3(0f, 0.3f, 0f), new Vector3(9f, 0.6f, 1.8f), m.Lit("PP_BargeHull", new Color(0.2f, 0.22f, 0.3f))));
+            RemoveCollider(Box("HullStripe", root, new Vector3(0f, 0.55f, 0f), new Vector3(9.05f, 0.08f, 1.85f), p.awningRed));
+            RemoveCollider(Box("Cabin", root, new Vector3(-1.2f, 0.95f, 0f), new Vector3(4.5f, 0.7f, 1.4f), p.plasterCream));
+            RemoveCollider(Box("CabinWindows", root, new Vector3(-1.2f, 1.0f, 0f), new Vector3(4.2f, 0.28f, 1.45f), p.windowLit));
+            for (int i = 0; i < 8; i++)
+                RemoveCollider(Sphere("Bulb", root, new Vector3(-4f + i * 1.1f, 1.55f - Mathf.Abs(i - 3.5f) * 0.06f, 0f), 0.14f, p.bulb));
+            var so = new SerializedObject(root.gameObject.AddComponent<SeineBarge>());
+            SetFloat(so, "speed", 0.5f);
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         static void BuildQuaiAndSeine(Transform env, Palette p)
         {
             var quai = Group("Quai", env);
             TexBoxXZ("Quai_WestWall", quai, -4.4f, -4.0f, 23.0f, 25.9f, 0f, 1.0f, p.limestone, 1.2f);
             TexBoxXZ("Quai_EastWall", quai, 4.4f, 4.8f, 23.0f, 25.9f, 0f, 1.0f, p.limestone, 1.2f);
-            TexBoxXZ("Parapet_West", quai, -4.0f, -1.0f, 25.6f, 25.9f, 0f, 0.45f, p.limestone, 1.2f);
-            TexBoxXZ("Parapet_East", quai, 0.0f, 4.4f, 25.6f, 25.9f, 0f, 0.45f, p.limestone, 1.2f);
-            var invisible = TexBoxXZ("Parapet_Gap_Invisible", quai, -1.0f, 0.0f, 25.85f, 25.9f, 0f, 0.4f, p.limestone, 1f);
-            invisible.GetComponent<MeshRenderer>().enabled = false; // 난간 틈으로 떨어지지 않게
+            // 양 끝은 돌 난간 + 초록 헌책방 상자(부키니스트), 가운데는 쇠 난간 → 눈높이 12cm에서도 난간 사이로 센강이 보인다 (최종 수정)
+            TexBoxXZ("Parapet_West", quai, -4.0f, -2.4f, 25.6f, 25.9f, 0f, 0.45f, p.limestone, 1.2f);
+            TexBoxXZ("Parapet_East", quai, 2.4f, 4.4f, 25.6f, 25.9f, 0f, 0.45f, p.limestone, 1.2f);
+            TexBoxXZ("Bouquiniste_W", quai, -3.9f, -2.5f, 25.58f, 25.95f, 0.45f, 0.85f, p.morrisGreen, 1f, false);
+            TexBoxXZ("Bouquiniste_E", quai, 2.6f, 4.3f, 25.58f, 25.95f, 0.45f, 0.85f, p.morrisGreen, 1f, false);
+            TexBoxXZ("Railing_Curb", quai, -2.4f, 2.4f, 25.6f, 25.9f, 0f, 0.05f, p.limestone, 1.2f);
+            for (float x = -2.3f; x <= 2.31f; x += 0.2f)
+                RemoveCollider(Box("Railing_Bar", quai, new Vector3(x, 0.3f, 25.75f), new Vector3(0.018f, 0.5f, 0.018f), p.iron));
+            RemoveCollider(Box("Railing_Top", quai, new Vector3(0f, 0.56f, 25.75f), new Vector3(4.8f, 0.03f, 0.04f), p.iron));
+            RemoveCollider(Box("Railing_Mid", quai, new Vector3(0f, 0.42f, 25.75f), new Vector3(4.8f, 0.015f, 0.02f), p.gold));
+            var railBlock = TexBoxXZ("Railing_Collider_Invisible", quai, -2.4f, 2.4f, 25.6f, 25.9f, 0f, 0.6f, p.limestone, 1f);
+            railBlock.GetComponent<MeshRenderer>().enabled = false; // 난간 사이로 떨어지지 않게
             LampPost("QuaiLamp_W", quai, new Vector3(-2.8f, 0f, 25.25f), p);
             LampPost("QuaiLamp_E", quai, new Vector3(2.6f, 0f, 25.25f), p);
 
@@ -453,7 +497,7 @@ namespace PetitParis.EditorTools
             TexBoxXZ("Seine_QuaiFace", quai, -40f, 40f, 25.9f, 26.1f, -1.0f, 0f, p.limestone, 1.2f, false);
             TexBoxXZ("FarBank", quai, -40f, 40f, 58f, 62f, -1f, 0.8f, p.farHaze, 4f, false);
             FarSkyline("FarSkyline", quai, 63f, 70f, -38f, 38f, p, 7);
-            EiffelSilhouette("EiffelTower", quai, new Vector3(-16f, -1f, 66f), 24f, p.eiffel);
+            EiffelSilhouette("EiffelTower", quai, new Vector3(-9f, -1f, 60f), 30f, p.eiffel); // 난간 앞에서 정면 약간 왼쪽에 크게 (최종 수정)
 
             // 다리와 다리 위 가로등 불빛
             TexBoxXZ("Bridge_Deck", quai, -40f, 40f, 40f, 42.5f, 2.0f, 2.6f, p.limestone, 2f, false);
@@ -782,8 +826,7 @@ namespace PetitParis.EditorTools
 
             // ── 뒷문 (바깥으로 열린 문) + 바깥 간판·등 ──
             var door = Group("BackDoor", k);
-            var doorLeaf = Box("DoorLeaf", door, Vector3.zero, new Vector3(0.05f, doorTop - 0.02f, doorX1 - doorX0 - 0.02f), m.Lit("PP_DoorGreen", new Color(0.18f, 0.32f, 0.26f)));
-            doorLeaf.transform.position = new Vector3(doorX0 + 0.03f, doorTop * 0.5f, z1 + 0.06f + (doorX1 - doorX0) * 0.5f); // 강변 쪽으로 열린 문 (주방 통로를 막지 않게)
+            // 문짝은 움직이므로 정적 env가 아닌 Gameplay에서 만든다 → BuildKitchenDoorGate
             TexBoxXZ("Frame_W", door, doorX0 - 0.08f, doorX0, z1, z1 + 0.05f, 0f, doorTop + 0.08f, p.trim, 1f, false);
             TexBoxXZ("Frame_E", door, doorX1, doorX1 + 0.08f, z1, z1 + 0.05f, 0f, doorTop + 0.08f, p.trim, 1f, false);
             TexBoxXZ("Frame_Top", door, doorX0 - 0.08f, doorX1 + 0.08f, z1, z1 + 0.05f, doorTop, doorTop + 0.08f, p.trim, 1f, false);

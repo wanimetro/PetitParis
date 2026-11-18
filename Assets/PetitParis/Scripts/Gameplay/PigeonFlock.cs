@@ -4,9 +4,10 @@ namespace PetitParis
 {
     /// <summary>
     /// 바닥에서 모이를 쪼는 비둘기 무리.
-    /// - 쥐가 followRadius 안에 오면 종종걸음으로 쥐를 따라온다. 쥐에게 닿으면 체크포인트 전에 모은 빵 부스러기를 하나 쪼아 간다
+    /// - 쥐가 followRadius 안에 오면 종종걸음으로 따라오되 keepDistance(40cm) 밖에서 멈춘다 (시야·길을 막지 않게)
+    /// - 따라오는 동안 peckCooldown마다 체크포인트 전에 모은 빵 부스러기를 하나 쪼아 간다
+    /// - 쥐가 비둘기에게 다가가 닿거나(touchRadius) 옆에서 질주하면 → 무리 전체가 날아가고, 물고 있던 빵 부스러기 2개를 떨어뜨린다
     /// - 쥐가 숨으면(안전 구역) 관심을 잃고, 둥지에서 leash보다 멀어지면 돌아간다
-    /// - 쥐가 바로 옆에서 질주하면 한꺼번에 날아오른다
     /// - 평소: 고개를 까딱이며 쪼고, 가끔 몇 걸음 종종 움직인다
     /// - 쥐가 scareRadius 안에 들어오면: 날갯짓 소리와 함께 쥐 반대쪽 위로 날아간다
     /// - 쥐가 멀리 떨어지고 returnDelay초가 지나면 원래 자리로 돌아와 있다
@@ -33,7 +34,15 @@ namespace PetitParis
         [SerializeField, Range(0.3f, 4f)] float followRadius = 1.6f;
         [SerializeField, Range(0.05f, 1f)] float followSpeed = 0.3f;
         [SerializeField, Range(1f, 8f)] float leash = 4f;
-        [SerializeField, Range(0.5f, 10f)] float peckCooldown = 2.5f;
+        [SerializeField, Range(0.5f, 10f)] float peckCooldown = 3f;
+        [Tooltip("따라올 때 쥐와 유지하는 거리 (월드 m). 이보다 가까워지지 않는다.")]
+        [SerializeField, Range(0.15f, 1f)] float keepDistance = 0.4f;
+        [Tooltip("쥐가 이 거리 안으로 다가가면 비둘기가 놀라 날아간다.")]
+        [SerializeField, Range(0.05f, 0.5f)] float touchRadius = 0.22f;
+        [Tooltip("쫓아냈을 때 떨어뜨리는 보너스 부스러기 (비활성 템플릿).")]
+        [SerializeField] CrumbPickup crumbTemplate;
+        [SerializeField, Range(0, 5)] int shooBonusCrumbs = 2;
+        bool bonusGiven;
 
         RatDangerDetector danger;
         RatDashController dash;
@@ -93,25 +102,22 @@ namespace PetitParis
                     if (b == null || b.root == null) continue;
                     Vector3 d = rat - b.root.position;
                     d.y = 0f;
-                    // 바로 옆에서 질주하면 날아오른다
-                    if (dash != null && dash.IsDashing && d.sqrMagnitude < scareRadius * scareRadius) { TakeOff(rat); return; }
+                    // 다가가 닿거나 바로 옆에서 질주하면 → 쫓아냄
+                    bool dashNear = dash != null && dash.IsDashing && d.sqrMagnitude < scareRadius * scareRadius;
+                    if (!hidden && (dashNear || d.sqrMagnitude < touchRadius * touchRadius)) { Shoo(rat, b.root.position); return; }
                     Vector3 fromHome = rat - homePos[i];
                     fromHome.y = 0f;
                     bool chase = !hidden && d.magnitude < followRadius && fromHome.magnitude < leash;
                     if (chase)
                     {
                         any = true;
-                        // 쥐 주변 자기 자리(새마다 다른 각도)로 종종걸음
-                        float a = seeds[i] * 2.4f;
-                        Vector3 goal = rat + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 0.14f;
-                        Vector3 step = goal - b.root.position;
-                        step.y = 0f;
-                        if (step.sqrMagnitude > 0.0004f)
-                        {
-                            b.root.position += Vector3.ClampMagnitude(step, followSpeed * dt);
-                            b.root.rotation = Quaternion.Slerp(b.root.rotation, Quaternion.LookRotation(d.sqrMagnitude > 1e-6f ? d.normalized : b.root.forward, Vector3.up), 1f - Mathf.Exp(-6f * dt));
-                        }
-                        if (d.magnitude < 0.12f && Time.time >= nextPeck) Peck();
+                        // keepDistance 밖에서만 쥐 쪽으로 종종걸음 (가까우면 그 자리에서 멈춤 → 쥐가 다가가 쫓아낼 수 있다)
+                        float dist = d.magnitude;
+                        if (dist > keepDistance + 0.02f)
+                            b.root.position += Vector3.ClampMagnitude(d.normalized * (dist - keepDistance), followSpeed * dt);
+                        if (dist > 1e-3f)
+                            b.root.rotation = Quaternion.Slerp(b.root.rotation, Quaternion.LookRotation(d / dist, Vector3.up), 1f - Mathf.Exp(-6f * dt));
+                        if (dist < keepDistance + 0.15f && Time.time >= nextPeck) Peck();
                         Peck(i, dt);
                     }
                     else
@@ -123,7 +129,11 @@ namespace PetitParis
                         Peck(i, dt);
                     }
                 }
-                if (any && !following && flow != null) flow.PostMessage(PetitParisText.MessagePigeons);
+                if (any && !following)
+                {
+                    nextPeck = Mathf.Max(nextPeck, Time.time + 2f); // 처음 따라붙고 2초 동안은 쪼지 않는다 (쫓아낼 시간)
+                    if (flow != null) flow.PostMessage(PetitParisText.MessagePigeons);
+                }
                 following = any;
             }
             else
@@ -176,6 +186,23 @@ namespace PetitParis
             }
         }
 
+        /// <summary>쫓아냄: 무리가 날아가며 빵 부스러기를 떨어뜨린다 (착지할 때마다 한 번).</summary>
+        void Shoo(Vector3 rat, Vector3 birdPos)
+        {
+            TakeOff(rat);
+            if (bonusGiven || crumbTemplate == null) return;
+            bonusGiven = true;
+            Vector3 at = new Vector3(birdPos.x, rat.y, birdPos.z);
+            for (int k = 0; k < shooBonusCrumbs; k++)
+            {
+                float a = k * 2.4f + seeds.Length;
+                var crumb = Instantiate(crumbTemplate, at + new Vector3(Mathf.Cos(a), 0.02f, Mathf.Sin(a)) * 0.1f, Quaternion.identity, transform);
+                crumb.IsBonus = true;
+                crumb.gameObject.SetActive(true);
+            }
+            if (flow != null) flow.PostMessage(PetitParisText.MessagePigeonShoo, 1);
+        }
+
         void TakeOff(Vector3 rat)
         {
             flying = true;
@@ -208,6 +235,7 @@ namespace PetitParis
         void Land()
         {
             flying = false;
+            bonusGiven = false;
             for (int i = 0; i < birds.Length; i++)
             {
                 var b = birds[i];

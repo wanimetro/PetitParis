@@ -259,6 +259,9 @@ namespace PetitParis.EditorTools
                     var fso = new SerializedObject(f);
                     report.Check(fso.FindProperty("items")?.arraySize > 0 && fso.FindProperty("zone")?.objectReferenceValue != null, $"{f.name}: 떨어질 물건·구역 연결", $"{f.name}의 items 또는 zone이 비어 있습니다.", warnOnly: true);
                 }
+                report.Check(Object.FindAnyObjectByType<KitchenDoorGate>() != null, "주방 뒷문 게이트(센강 난간 CP5에서 열림) 있음",
+                    "KitchenDoorGate가 없습니다 (메뉴 3번으로 다시 생성).", warnOnly: true);
+                report.Check(Object.FindAnyObjectByType<SeineBarge>() != null, "센강 유람선 있음", "SeineBarge가 없습니다.", warnOnly: true);
                 report.Info($"비둘기 무리 {Object.FindObjectsByType<PigeonFlock>(FindObjectsInactive.Include).Length}개, 이야기 구역 {Object.FindObjectsByType<RatStoryTrigger>(FindObjectsInactive.Include).Length}개");
                 var goal = flow != null ? new SerializedObject(flow).FindProperty("goalVolume")?.objectReferenceValue as Collider : null;
                 report.Check(goal != null && goal.bounds.min.y > 0.5f, "목적지 = 주방 식탁 위 치즈", "목적지(goalVolume)가 식탁 위(높이 0.9m)가 아닙니다.", warnOnly: true);

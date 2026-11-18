@@ -62,7 +62,7 @@ namespace PetitParis
             if (respawn != null && respawn.IsRespawning)
                 sb.Append("<color=#ffb060>").Append(PetitParisText.StatusRespawning).Append("</color>");
             else if (danger != null && danger.IsSafe)
-                sb.Append("<color=#7CFC7C>").Append(PetitParisText.StatusSafe).Append(" · ").Append(danger.CurrentSafeZone.ZoneName).Append("</color>");
+                sb.Append("<color=#7CFC7C>").Append(PetitParisText.StatusHidden).Append(" · ").Append(danger.CurrentSafeZone.ZoneName).Append("</color>");
             else if (danger != null && danger.DangerLevel > 0.35f)
                 sb.Append("<color=#ff6060>").Append(PetitParisText.StatusDanger).Append("</color>");
             else

@@ -188,6 +188,22 @@ namespace PetitParis.EditorTools
                 }
                 report.Check(walkers.Length == 6, "보행자 6명 (테라스 3명, 빵집 셰프, 빗자루 웨이터, 주방 셰프)", $"보행자가 {walkers.Length}명입니다 (기획: 6명).", warnOnly: true);
                 report.Check(Object.FindAnyObjectByType<ChefSwat>() != null, "주방 요리사 주걱 반응(ChefSwat) 있음", "ChefSwat가 없습니다 (메뉴 3번).", warnOnly: true);
+                report.Check(typeof(ChefSwat).GetProperty(nameof(ChefSwat.IsWaitingForLeave)) != null,
+                    "주걱: 리스폰 직후 제자리에서는 다시 치지 않음 (CP7 연속 실패 방지)",
+                    "ChefSwat에 리스폰 대기(WaitForLeave)가 없습니다 → CP7에서 2.5초마다 계속 맞습니다.");
+                var flockList = Object.FindObjectsByType<PigeonFlock>(FindObjectsInactive.Exclude);
+                foreach (var flock in flockList)
+                {
+                    var fso = new SerializedObject(flock);
+                    float keep = fso.FindProperty("keepDistance")?.floatValue ?? 0f;
+                    float touch = fso.FindProperty("touchRadius")?.floatValue ?? 0f;
+                    bool template = fso.FindProperty("crumbTemplate")?.objectReferenceValue != null;
+                    int bonus = fso.FindProperty("shooBonusCrumbs")?.intValue ?? 0;
+                    report.Check(keep > touch && (bonus == 0 || template),
+                        $"{flock.name}: {keep * 100f:0}cm 밖에서 멈춤, {touch * 100f:0}cm 안으로 다가가면 날아감, 부스러기 {bonus}개",
+                        $"{flock.name}: 멈추는 거리({keep:0.00}m)가 쫓아내는 거리({touch:0.00}m)보다 커야 하고, 보너스 부스러기 템플릿이 연결돼 있어야 합니다 (메뉴 3번).", warnOnly: true);
+                }
+                report.Check(flockList.Length > 0, $"비둘기 무리 {flockList.Length}개", "비둘기 무리가 없습니다.", warnOnly: true);
 
                 // AI 리뷰 P1 수정 사항 점검
                 var flowSo = flow != null ? new SerializedObject(flow) : null;
@@ -268,6 +284,8 @@ namespace PetitParis.EditorTools
                 var goal = flow != null ? new SerializedObject(flow).FindProperty("goalVolume")?.objectReferenceValue as Collider : null;
                 report.Check(goal != null && goal.bounds.min.y > 0.5f, "목적지 = 주방 식탁 위 치즈", "목적지(goalVolume)가 식탁 위(높이 0.9m)가 아닙니다.", warnOnly: true);
                 CheckGoalReachableAtWheel(report, goal);
+                CheckThirdPartyTextures(report);
+                CheckDuskLighting(report);
                 var completePanel = flow != null ? new SerializedObject(flow).FindProperty("completePanel")?.objectReferenceValue as Transform : null;
                 if (completePanel != null)
                 {
@@ -329,7 +347,10 @@ namespace PetitParis.EditorTools
             if (hasGeneral)
             {
                 string text = System.IO.File.ReadAllText(XrGeneralSettingsPath);
-                report.Check(text.Contains("OpenXRLoader"), "Android XR 로더 = OpenXR",
+                // 로더는 이름이 아니라 GUID로 참조되므로 OpenXRLoader 에셋의 GUID도 확인한다
+                bool hasLoader = text.Contains("OpenXRLoader") ||
+                    AssetDatabase.FindAssets("t:OpenXRLoader").Any(g => text.Contains(g));
+                report.Check(hasLoader, "Android XR 로더 = OpenXR",
                     "XR 로더 설정에 OpenXR이 없습니다: XR Plug-in Management > Android 탭에서 OpenXR을 체크하세요.");
             }
 
@@ -342,6 +363,8 @@ namespace PetitParis.EditorTools
                     "Android OpenXR > Enabled Interaction Profiles에 Oculus Touch Controller Profile이 없습니다. Quest 2 Touch 컨트롤러는 이 프로필이 필요합니다 (Touch Plus는 Quest 3용).");
                 report.Check(FeatureEnabled(text, "MetaQuestFeature Android"), "Android: Meta Quest Support 켜짐",
                     "Android OpenXR > OpenXR Feature Groups에서 Meta Quest Support를 체크하세요.");
+                report.Check(FeatureEnabled(text, "FoveatedRenderingFeature Android"), "Android: Foveated Rendering 켜짐 (Quest 2 GPU 절약, RatQuestPerformance)",
+                    "Android OpenXR > Features에서 Foveated Rendering을 켜세요. 꺼져 있으면 Quest 2에서 GPU가 모자라 45~50fps로 떨어지고 머리를 돌릴 때 화면이 흔들립니다.");
                 if (text.Contains("m_Name: MetaQuestFeature Android"))
                     report.Check(text.Contains("quest2") || text.Contains("Quest2") || text.Contains("targetDevices"),
                         "Meta Quest Support 대상 기기 설정 있음", "Meta Quest Support의 Target Devices에서 Quest 2를 체크했는지 확인하세요.", warnOnly: true);
@@ -436,6 +459,54 @@ namespace PetitParis.EditorTools
             }
             report.Check(inside == dirs.Length, "치즈 바퀴에 어느 방향에서 닿아도 도착 구역 안",
                 $"치즈 바퀴에 닿은 위치 4방향 중 {inside}방향만 도착 구역 안입니다. 바퀴에 막혀 도착하지 못할 수 있습니다.");
+        }
+
+        /// <summary>바닥·벽 주요 재질이 Poly Haven 질감(ThirdParty, 최대 1K)을 쓰는지. 없으면 코드 생성 질감으로 대체된 상태.</summary>
+        static void CheckThirdPartyTextures(Report report)
+        {
+            var names = new[] { "PP_Cobble", "PP_Slabs", "PP_Limestone", "PP_PlasterCream", "PP_ZincRoof", "PP_KitchenFloor" };
+            var missing = new List<string>();
+            foreach (var n in names)
+            {
+                var mat = AssetDatabase.LoadAssetAtPath<Material>($"{PetitParisPaths.Materials}/{n}.mat");
+                var tex = mat != null && mat.HasProperty("_BaseMap") ? mat.GetTexture("_BaseMap") : null;
+                string path = tex != null ? AssetDatabase.GetAssetPath(tex) : "";
+                if (!path.StartsWith(PetitParisThirdPartyImport.Root)) missing.Add(n);
+            }
+            report.Check(missing.Count == 0, $"바닥·벽 질감 = Poly Haven (CC0, {names.Length}개 재질)",
+                "Poly Haven 질감 대신 코드 생성 질감을 쓰는 재질: " + string.Join(", ", missing) + " (ThirdParty/PolyHaven 파일 확인 후 메뉴 3번)", warnOnly: true);
+
+            int over = 0;
+            foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { PetitParisThirdPartyImport.Root.TrimEnd('/') }))
+            {
+                var ti = AssetImporter.GetAtPath(AssetDatabase.GUIDToAssetPath(guid)) as TextureImporter;
+                if (ti != null && ti.maxTextureSize > PetitParisThirdPartyImport.MaxTextureSize) over++;
+            }
+            report.Check(over == 0, $"ThirdParty 질감 최대 {PetitParisThirdPartyImport.MaxTextureSize}px",
+                $"ThirdParty 질감 {over}장이 {PetitParisThirdPartyImport.MaxTextureSize}px보다 큽니다 (메뉴 5번 Reimport Third Party).", warnOnly: true);
+        }
+
+        /// <summary>해 질 녘 조명·후처리: 실시간 그림자 + 짧은 그림자 거리, 가벼운 후처리만 (Bloom 없음), 카메라 후처리 켬.</summary>
+        static void CheckDuskLighting(Report report)
+        {
+            var sun = RenderSettings.sun;
+            report.Check(sun != null && sun.shadows != LightShadows.None, "해: 실시간 그림자", "해(RenderSettings.sun)가 없거나 그림자가 꺼져 있습니다.", warnOnly: true);
+            var mobile = AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset>("Assets/Settings/Mobile_RPAsset.asset");
+            report.Check(mobile != null && mobile.shadowDistance <= 15f, $"Quest 그림자 거리 {mobile?.shadowDistance:0}m (15m 이하)",
+                $"Quest(Mobile_RPAsset) 그림자 거리가 {mobile?.shadowDistance:0}m입니다. 15m 이하로 (메뉴 3번이 {PetitParisParisKit.DuskShadowDistance}m로 맞춤).", warnOnly: true);
+
+            var volumes = Object.FindObjectsByType<Volume>(FindObjectsInactive.Include);
+            var profile = volumes.Select(v => v.sharedProfile).FirstOrDefault(p => p != null);
+            if (report.Check(profile != null, "전역 후처리 Volume 있음", "후처리 Volume이 없습니다 (메뉴 3번).", warnOnly: true))
+            {
+                bool ok = profile.Has<UnityEngine.Rendering.Universal.Tonemapping>() && profile.Has<UnityEngine.Rendering.Universal.ColorAdjustments>() && profile.Has<UnityEngine.Rendering.Universal.Vignette>();
+                bool heavy = profile.Has<UnityEngine.Rendering.Universal.Bloom>() || profile.Has<UnityEngine.Rendering.Universal.DepthOfField>() || profile.Has<UnityEngine.Rendering.Universal.MotionBlur>();
+                report.Check(ok, "후처리: Tonemapping + Color Adjustments + Vignette", "후처리 프로필에 Tonemapping/Color Adjustments/Vignette 중 빠진 것이 있습니다.", warnOnly: true);
+                report.Check(!heavy, "후처리: Bloom·피사계심도·모션블러 없음 (Quest 성능)", "후처리에 Bloom/피사계심도/모션블러가 있습니다. Quest에서 성능을 확인한 뒤에만 켭니다 (모션블러는 멀미).", warnOnly: true);
+            }
+            var rig = Object.FindAnyObjectByType<RatScaleRig>();
+            var camData = rig != null && rig.EyeCamera != null ? rig.EyeCamera.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>() : null;
+            report.Check(camData != null && camData.renderPostProcessing, "Main Camera 후처리 켬", "Main Camera의 Post Processing이 꺼져 있어 후처리가 보이지 않습니다.", warnOnly: true);
         }
 
         static void CheckPoseDriver(Report report, TrackedPoseDriver driver, string owner)

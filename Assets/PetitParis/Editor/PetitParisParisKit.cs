@@ -19,6 +19,35 @@ namespace PetitParis.EditorTools
     {
         // ───────────────────────── 재질 모음 ─────────────────────────
 
+        public const string PolyHavenRoot = "Assets/PetitParis/ThirdParty/PolyHaven";
+
+        /// <summary>
+        /// Poly Haven 질감 재질 (Simple Lit, 색 + 노멀 1K). 빌더는 TexBox의 tile 값(질감 1회 반복 길이)으로 UV를 만들므로,
+        /// 재질 tiling = typicalTile / realSize 로 실제 크기에 맞춘다. 질감 파일이 없으면 fallback(코드 생성 질감)을 쓴다.
+        /// </summary>
+        public static Material PolyHaven(MaterialLibrary m, string name, string id, float realSize, float typicalTile, Color tint, System.Func<Texture2D> fallback)
+        {
+            string dir = $"{PolyHavenRoot}/{id}";
+            var diff = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>($"{dir}/{id}_diff_1k.jpg");
+            var nor = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>($"{dir}/{id}_nor_gl_1k.jpg");
+            if (diff == null)
+            {
+                Debug.LogWarning($"[PetitParis] Poly Haven 질감 {id}이 없어 코드 생성 질감을 씁니다 ({dir}).");
+                return m.LitTex(name, fallback(), tint);
+            }
+            var mat = m.LitTex(name, diff, tint);
+            float tiling = typicalTile / Mathf.Max(0.01f, realSize);
+            if (mat.HasProperty("_BaseMap")) mat.SetTextureScale("_BaseMap", new Vector2(tiling, tiling));
+            if (mat.HasProperty("_MainTex")) mat.SetTextureScale("_MainTex", new Vector2(tiling, tiling));
+            if (nor != null && mat.HasProperty("_BumpMap"))
+            {
+                mat.SetTexture("_BumpMap", nor);
+                mat.EnableKeyword("_NORMALMAP");
+            }
+            UnityEditor.EditorUtility.SetDirty(mat);
+            return mat;
+        }
+
         public class Palette
         {
             public Material cobble, cobbleDark, slabs, slabsWarm, asphalt, limestone, rustic, plasterCream, plasterOchre, plasterPink;
@@ -29,18 +58,20 @@ namespace PetitParis.EditorTools
             public static Palette Create(MaterialLibrary m)
             {
                 var p = new Palette();
-                p.cobble = m.LitTex("PP_Cobble", PetitParisTextures.Cobblestone(), Color.white);
-                p.cobbleDark = m.LitTex("PP_CobbleDark", PetitParisTextures.Cobblestone(), new Color(0.9f, 0.88f, 0.9f));
-                p.slabs = m.LitTex("PP_Slabs", PetitParisTextures.SidewalkSlabs(), Color.white);
-                p.slabsWarm = m.LitTex("PP_SlabsWarm", PetitParisTextures.SidewalkSlabs(), new Color(1f, 0.93f, 0.85f));
+                // 바닥·벽·지붕·나무: Poly Haven CC0 질감 (1K, 색 + 노멀). 파일이 없으면 코드 생성 질감으로 대체.
+                // 인자: (실제 크기 m, 빌더가 이 재질에 주로 쓰는 tile 값, 색조). 색조가 1보다 크면 질감을 밝힌다 (Simple Lit은 단순 곱셈).
+                p.cobble = PolyHaven(m, "PP_Cobble", "cobblestone_square", 1f, 0.85f, Color.white, () => PetitParisTextures.Cobblestone());
+                p.cobbleDark = PolyHaven(m, "PP_CobbleDark", "cobblestone_square", 1f, 0.9f, new Color(0.82f, 0.8f, 0.84f), () => PetitParisTextures.Cobblestone());
+                p.slabs = PolyHaven(m, "PP_Slabs", "rectangular_paving", 2f, 1.2f, new Color(1.15f, 1.12f, 1.1f), () => PetitParisTextures.SidewalkSlabs());
+                p.slabsWarm = PolyHaven(m, "PP_SlabsWarm", "rectangular_paving", 2f, 1.3f, new Color(1.2f, 1.1f, 1f), () => PetitParisTextures.SidewalkSlabs());
                 p.asphalt = m.LitTex("PP_AsphaltTex", PetitParisTextures.Asphalt(), Color.white);
-                p.limestone = m.LitTex("PP_Limestone", PetitParisTextures.Limestone(), Color.white);
-                p.rustic = m.LitTex("PP_LimestoneRustic", PetitParisTextures.LimestoneRustic(), Color.white);
-                p.plasterCream = m.LitTex("PP_PlasterCream", PetitParisTextures.Plaster("PP_PlasterCreamTex", new Color(0.9f, 0.84f, 0.72f), 1), Color.white);
-                p.plasterOchre = m.LitTex("PP_PlasterOchre", PetitParisTextures.Plaster("PP_PlasterOchreTex", new Color(0.86f, 0.68f, 0.45f), 2), Color.white);
-                p.plasterPink = m.LitTex("PP_PlasterPink", PetitParisTextures.Plaster("PP_PlasterPinkTex", new Color(0.88f, 0.7f, 0.66f), 3), Color.white);
-                p.zinc = m.LitTex("PP_ZincRoof", PetitParisTextures.Zinc(), Color.white);
-                p.wood = m.LitTex("PP_WoodTex", PetitParisTextures.Wood(), Color.white);
+                p.limestone = PolyHaven(m, "PP_Limestone", "white_sandstone_blocks_02", 2f, 1.2f, new Color(1.2f, 1.18f, 1.15f), () => PetitParisTextures.Limestone());
+                p.rustic = PolyHaven(m, "PP_LimestoneRustic", "white_sandstone_blocks_02", 2f, 1.2f, new Color(1.1f, 1.06f, 1f), () => PetitParisTextures.LimestoneRustic());
+                p.plasterCream = PolyHaven(m, "PP_PlasterCream", "painted_plaster_wall", 2f, 2f, new Color(1.34f, 1.28f, 1.12f), () => PetitParisTextures.Plaster("PP_PlasterCreamTex", new Color(0.9f, 0.84f, 0.72f), 1));
+                p.plasterOchre = PolyHaven(m, "PP_PlasterOchre", "yellow_plaster", 2f, 2f, new Color(1.4f, 1.3f, 1.25f), () => PetitParisTextures.Plaster("PP_PlasterOchreTex", new Color(0.86f, 0.68f, 0.45f), 2));
+                p.plasterPink = PolyHaven(m, "PP_PlasterPink", "painted_plaster_wall", 2f, 2f, new Color(1.32f, 1.08f, 1.02f), () => PetitParisTextures.Plaster("PP_PlasterPinkTex", new Color(0.88f, 0.7f, 0.66f), 3));
+                p.zinc = PolyHaven(m, "PP_ZincRoof", "grey_roof_01", 8f, 1.5f, new Color(1.05f, 1.1f, 1.2f), () => PetitParisTextures.Zinc());
+                p.wood = PolyHaven(m, "PP_WoodTex", "brown_planks_05", 1f, 0.8f, new Color(0.95f, 0.8f, 0.65f), () => PetitParisTextures.Wood());
                 p.brick = m.LitTex("PP_BrickTex", PetitParisTextures.Brick(), Color.white);
                 p.trim = m.LitTex("PP_StoneTrim", PetitParisTextures.Limestone(), new Color(1.05f, 1.02f, 0.98f));
                 p.iron = m.Lit("PP_Iron", new Color(0.09f, 0.11f, 0.1f));
@@ -52,9 +83,10 @@ namespace PetitParis.EditorTools
                 p.awningGreen = m.LitTex("PP_AwningGreen", PetitParisTextures.Stripes("PP_StripesGreenU", new Color(0.12f, 0.36f, 0.24f), new Color(0.95f, 0.92f, 0.85f), 4, false), Color.white);
                 p.awningGreenTop = m.LitTex("PP_AwningGreenTop", PetitParisTextures.Stripes("PP_StripesGreenV", new Color(0.12f, 0.36f, 0.24f), new Color(0.95f, 0.92f, 0.85f), 4, true), Color.white);
                 // 창문·쇼윈도·조명은 Unlit → 해 질 녘에도 스스로 빛나 보인다
-                p.windowLit = m.UnlitTex("PP_WindowLitMat", PetitParisTextures.WindowLit(), Color.white);
+                // 창문·가게·가로등 불빛: 더 진하게 (해 질 녘 거리에서 따뜻한 빛이 눈에 띄게)
+                p.windowLit = m.UnlitTex("PP_WindowLitMat", PetitParisTextures.WindowLit(), new Color(1.35f, 1.2f, 1f));
                 p.windowDark = m.LitTex("PP_WindowDarkMat", PetitParisTextures.WindowDark(), Color.white);
-                p.shopWindow = m.UnlitTex("PP_ShopWindowMat", PetitParisTextures.ShopWindow(), Color.white);
+                p.shopWindow = m.UnlitTex("PP_ShopWindowMat", PetitParisTextures.ShopWindow(), new Color(1.45f, 1.25f, 1f));
                 p.geraniums = m.LitTex("PP_GeraniumsMat", PetitParisTextures.Geraniums(), Color.white);
                 p.posters = m.LitTex("PP_PostersMat", PetitParisTextures.Posters(), Color.white);
                 p.morrisGreen = m.Lit("PP_MorrisGreen", new Color(0.12f, 0.24f, 0.18f));
@@ -64,8 +96,8 @@ namespace PetitParis.EditorTools
                 p.shopBlue = m.Lit("PP_ShopPaintBlue", new Color(0.1f, 0.18f, 0.38f));
                 p.shopGreen = m.Lit("PP_ShopPaintGreen", new Color(0.08f, 0.26f, 0.18f));
                 p.shopBrown = m.Lit("PP_ShopPaintBrown", new Color(0.3f, 0.16f, 0.1f));
-                p.lampGlow = m.Unlit("PP_LampGlow", new Color(1f, 0.82f, 0.5f));
-                p.bulb = m.Unlit("PP_Bulb", new Color(1f, 0.88f, 0.6f));
+                p.lampGlow = m.Unlit("PP_LampGlow", new Color(1f, 0.86f, 0.52f));
+                p.bulb = m.Unlit("PP_Bulb", new Color(1f, 0.92f, 0.62f));
                 p.gold = m.Unlit("PP_GoldLetters", new Color(0.95f, 0.78f, 0.4f));
                 p.water = m.UnlitTex("PP_SeineWaterTex", PetitParisTextures.WaterLights(), Color.white);
                 p.cityLights = m.UnlitTex("PP_CityLightsMat", PetitParisTextures.CityLights(), Color.white);
@@ -87,33 +119,104 @@ namespace PetitParis.EditorTools
             var lightGO = new GameObject("Directional Light (Dusk Sun)");
             var light = lightGO.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.color = new Color(1f, 0.66f, 0.5f);
-            light.intensity = 1.1f;
-            light.shadows = LightShadows.Hard;
-            lightGO.transform.rotation = Quaternion.Euler(11f, 62f, 0f); // 서남서 낮은 해 → 동쪽 건물 윗부분만 노을빛
+            // 애니메이션 영화 같은 해 질 녘: 낮은 각도의 진한 황금빛 + 실시간 그림자 (그림자 거리는 URP 에셋에서 짧게)
+            light.color = new Color(1f, 0.7f, 0.42f);
+            light.intensity = 1.35f;
+            light.shadows = LightShadows.Soft; // Quest 에셋이 소프트 그림자를 끄면 하드로 그려진다
+            light.shadowStrength = 0.85f;
+            lightGO.transform.rotation = Quaternion.Euler(14f, 62f, 0f); // 서남서 낮은 해 → 거리 바닥까지 긴 그림자, 동쪽 건물에 노을빛
 
             var skyShader = Shader.Find("Skybox/Procedural");
             if (skyShader != null)
             {
                 var sky = m.Custom("PP_DuskSky", skyShader, Color.white);
-                SetIf(sky, "_SunSize", 0.035f);
-                SetIf(sky, "_SunSizeConvergence", 6f);
-                SetIf(sky, "_AtmosphereThickness", 1.55f);
-                if (sky.HasProperty("_SkyTint")) sky.SetColor("_SkyTint", new Color(0.56f, 0.5f, 0.76f));
-                if (sky.HasProperty("_GroundColor")) sky.SetColor("_GroundColor", new Color(0.36f, 0.32f, 0.36f));
-                SetIf(sky, "_Exposure", 1.15f);
+                SetIf(sky, "_SunSize", 0.04f);
+                SetIf(sky, "_SunSizeConvergence", 5f);
+                SetIf(sky, "_AtmosphereThickness", 1.8f);
+                if (sky.HasProperty("_SkyTint")) sky.SetColor("_SkyTint", new Color(0.75f, 0.52f, 0.6f));   // 주황~분홍
+                if (sky.HasProperty("_GroundColor")) sky.SetColor("_GroundColor", new Color(0.45f, 0.33f, 0.32f));
+                SetIf(sky, "_Exposure", 1.2f);
                 RenderSettings.skybox = sky;
             }
             RenderSettings.sun = light;
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.78f, 0.75f, 0.96f);
-            RenderSettings.ambientEquatorColor = new Color(0.95f, 0.78f, 0.7f);
-            RenderSettings.ambientGroundColor = new Color(0.55f, 0.46f, 0.42f);
+            RenderSettings.ambientSkyColor = new Color(0.82f, 0.68f, 0.82f);
+            RenderSettings.ambientEquatorColor = new Color(1f, 0.74f, 0.6f);
+            RenderSettings.ambientGroundColor = new Color(0.55f, 0.42f, 0.38f);
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.74f, 0.62f, 0.7f);
-            RenderSettings.fogStartDistance = 10f;
-            RenderSettings.fogEndDistance = 120f;
+            RenderSettings.fogColor = new Color(0.96f, 0.66f, 0.56f);
+            RenderSettings.fogStartDistance = 8f;
+            RenderSettings.fogEndDistance = 90f;
+
+            ApplyShortShadows();
+            CreateDuskVolume();
+        }
+
+        public const float DuskShadowDistance = 12f;
+        public const string DuskVolumeProfilePath = "Assets/PetitParis/Settings/PP_DuskVolume.asset";
+
+        /// <summary>
+        /// 그림자 거리를 짧게 (쥐의 세계는 작다: 12m면 충분, Quest 그림자 비용·해상도 확보).
+        /// Quest(Mobile_RPAsset)와 에디터(PC_RPAsset) 모두 같은 거리·캐스케이드 1개로 맞춰 에디터 통계가 Quest에 가깝게 한다.
+        /// </summary>
+        public static void ApplyShortShadows()
+        {
+            foreach (var path in new[] { "Assets/Settings/Mobile_RPAsset.asset", "Assets/Settings/PC_RPAsset.asset" })
+            {
+                var a = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset>(path);
+                if (a == null) continue;
+                if (Mathf.Approximately(a.shadowDistance, DuskShadowDistance) && a.shadowCascadeCount == 1) continue;
+                Debug.Log($"[PetitParis] {a.name}: 그림자 거리 {a.shadowDistance}m → {DuskShadowDistance}m, 캐스케이드 {a.shadowCascadeCount} → 1");
+                a.shadowDistance = DuskShadowDistance;
+                a.shadowCascadeCount = 1;
+                UnityEditor.EditorUtility.SetDirty(a);
+            }
+            UnityEditor.AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>
+        /// 전역 후처리 Volume: Quest 3에서 가벼운 것만 (Tonemapping Neutral, Color Adjustments, 약한 Vignette). Bloom 없음.
+        /// 프로필은 매번 새로 만든다 (값을 코드에서 관리).
+        /// </summary>
+        static void CreateDuskVolume()
+        {
+            if (UnityEditor.AssetDatabase.LoadAssetAtPath<VolumeProfile>(DuskVolumeProfilePath) != null)
+                UnityEditor.AssetDatabase.DeleteAsset(DuskVolumeProfilePath);
+            var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+            UnityEditor.AssetDatabase.CreateAsset(profile, DuskVolumeProfilePath);
+
+            var tone = AddOverride<UnityEngine.Rendering.Universal.Tonemapping>(profile);
+            tone.mode.Override(UnityEngine.Rendering.Universal.TonemappingMode.Neutral);
+
+            var color = AddOverride<UnityEngine.Rendering.Universal.ColorAdjustments>(profile);
+            color.postExposure.Override(0.25f);
+            color.contrast.Override(10f);
+            color.saturation.Override(14f);
+            color.colorFilter.Override(new Color(1f, 0.94f, 0.86f)); // 따뜻한 오후 햇살
+
+            var vignette = AddOverride<UnityEngine.Rendering.Universal.Vignette>(profile);
+            vignette.intensity.Override(0.2f);
+            vignette.smoothness.Override(0.45f);
+            vignette.color.Override(new Color(0.18f, 0.08f, 0.06f));
+
+            UnityEditor.EditorUtility.SetDirty(profile);
+            UnityEditor.AssetDatabase.SaveAssets();
+
+            var go = new GameObject("Global Volume (Dusk)");
+            var volume = go.AddComponent<Volume>();
+            volume.isGlobal = true;
+            volume.priority = 0f;
+            volume.sharedProfile = profile;
+        }
+
+        static T AddOverride<T>(VolumeProfile profile) where T : VolumeComponent
+        {
+            var c = profile.Add<T>(true);
+            c.name = typeof(T).Name;
+            c.hideFlags = HideFlags.HideInInspector | HideFlags.HideInHierarchy;
+            UnityEditor.AssetDatabase.AddObjectToAsset(c, profile);
+            return c;
         }
 
         static void SetIf(Material mat, string prop, float value)

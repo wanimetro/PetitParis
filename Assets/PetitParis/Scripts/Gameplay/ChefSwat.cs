@@ -31,6 +31,13 @@ namespace PetitParis
         float nextTime;
         bool messageShown;
 
+        // 리스폰 직후 제자리에 가만히 있는 쥐는 치지 않는다 (CP7 상자가 요리사 손 안이라 2.5초마다 계속 맞던 문제).
+        // 쥐가 리스폰 지점에서 leaveDistance 넘게 움직이면 다시 노린다 (CrumbPickup.WaitForLeave와 같은 방식)
+        const float LeaveDistance = 0.3f;
+        bool waitForLeave;
+        Vector3 spawnPosition;
+        public bool IsWaitingForLeave => waitForLeave;
+
         void Awake()
         {
             rig = FindAnyObjectByType<RatScaleRig>();
@@ -40,6 +47,24 @@ namespace PetitParis
             PetitParisAudio.Configure3D(sfx, 0.4f, 10f);
             if (toolHazard != null) toolHazard.enabled = false; // 판정은 여기서 직접 (리스폰 이중 처리 방지)
             Hide();
+        }
+
+        void OnEnable()
+        {
+            if (respawn != null) respawn.Respawned += OnRespawned;
+        }
+
+        void OnDisable()
+        {
+            if (respawn != null) respawn.Respawned -= OnRespawned;
+        }
+
+        void OnRespawned()
+        {
+            if (rig == null) return;
+            spawnPosition = rig.transform.position;
+            waitForLeave = true;
+            if (timer >= 0f) { timer = -1f; CancelInvoke(nameof(Hide)); Hide(); }
         }
 
         void Hide()
@@ -53,6 +78,11 @@ namespace PetitParis
             if (chef == null || path == null || rig == null || danger == null || !chef.IsHunting || danger.IsSafe) return false;
             if (respawn != null && (respawn.IsRespawning || respawn.IsInvulnerable)) return false;
             Vector3 r = rig.transform.position, c = path.GroundPosition;
+            if (waitForLeave)
+            {
+                if (new Vector2(r.x - spawnPosition.x, r.z - spawnPosition.z).magnitude <= LeaveDistance) return false;
+                waitForLeave = false;
+            }
             return r.y - c.y > elevation && new Vector2(r.x - c.x, r.z - c.z).magnitude < reach;
         }
 

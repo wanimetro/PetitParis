@@ -45,6 +45,8 @@ namespace PetitParis
         public float PickupRadius => pickupRadius;
         public bool IsGolden => kind == Kind.GoldenCroissant;
         public bool IsAvailable => state == State.Idle && isActiveAndEnabled;
+        /// <summary>비둘기가 쪼아 가서 되살아난 조각: 쥐가 한 번 멀어진 뒤에야 다시 주울 수 있다 (CrumbCollection이 해제).</summary>
+        public bool WaitForLeave { get; set; }
         /// <summary>게임 중에 생긴 조각 (떨어진 바게트에서 나온 부스러기 등). 별점 기준 총점에는 넣지 않는다.</summary>
         public bool IsBonus { get; set; }
 
@@ -104,9 +106,10 @@ namespace PetitParis
         }
 
         /// <summary>다시 주울 수 있게 원래 자리에 되살린다.</summary>
-        public void Restore()
+        public void Restore(bool waitForLeave = false)
         {
             state = State.Idle;
+            WaitForLeave = waitForLeave;
             if (visual == null) return;
             visual.gameObject.SetActive(true);
             visual.localPosition = visualHome;

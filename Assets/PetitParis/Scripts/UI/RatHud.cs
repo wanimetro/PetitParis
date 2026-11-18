@@ -48,7 +48,9 @@ namespace PetitParis
         {
             if (rig == null || rig.EyeCamera == null) return;
             bool show = gameFlow == null || (gameFlow.CurrentPhase != PetitParisGameFlow.Phase.Completed && !gameFlow.IsMenuOpen);
-            if (scoreText != null) scoreText.gameObject.SetActive(show && crumbs != null);
+            // 시작 안내가 떠 있는 동안 점수 줄은 숨긴다 (안내 글자 한가운데에 겹쳐 읽을 수 없었다)
+            bool intro = gameFlow != null && gameFlow.CurrentPhase == PetitParisGameFlow.Phase.Intro;
+            if (scoreText != null) scoreText.gameObject.SetActive(show && !intro && crumbs != null);
             if (!show)
             {
                 if (messageText != null) messageText.gameObject.SetActive(false);

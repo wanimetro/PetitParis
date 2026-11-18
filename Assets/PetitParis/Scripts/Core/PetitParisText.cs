@@ -30,7 +30,7 @@ namespace PetitParis
         public const string MenuTitle = "일시 정지 · 조작법";
         public const string MenuRules =
             "규칙: 사람 발·자전거·빗자루·바게트에 닿으면 체크포인트로 돌아가요\n" +
-            "들키면 초록 표시가 있는 곳(의자·벤치·팔레트 밑)에 숨어요\n" +
+            "들키면 초록 표시가 있는 곳(의자·벤치 밑, 통·양동이 안)에 숨어요\n" +
             "★ 도착  ★ 빵 부스러기 60% 이상  ★ 황금 크루아상 3개";
         public const string MenuComfortOn = "편안함 모드: 켜짐 (느린 이동 · 비네트 강화 · 점프 끔)";
         public const string MenuComfortOff = "편안함 모드: 꺼짐";

@@ -363,6 +363,7 @@ namespace PetitParis
                 case PetitParisText.HazardBike: return PetitParisText.FailBike;
                 case PetitParisText.HazardBroom: return PetitParisText.FailBroom;
                 case PetitParisText.HazardBaguette: return PetitParisText.FailBaguette;
+                case PetitParisText.HazardSpatula: return PetitParisText.FailSpatula;
                 case PetitParisText.MessageFell: return PetitParisText.FailFell;
                 default: return PetitParisText.MessageDied;
             }

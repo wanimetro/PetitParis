@@ -65,11 +65,26 @@ namespace PetitParis.EditorTools
             var waiterA = Pedestrian("Pedestrian_A_Waiter", npcs,
                 new[] { new Vector3(-2.5f, 0f, 0.2f), new Vector3(-2.5f, 0f, 6.9f), new Vector3(0.25f, 0f, 6.9f), new Vector3(0.25f, 0f, 0.2f) },
                 PedestrianPath.LoopMode.Loop, 0.9f, 25f, new Color(0.25f, 0.3f, 0.45f), m, PedestrianStyle.Waiter); // 첫 25초는 조작 연습 (ISSUE-07)
+            // 1라운드 사람 3명 (최종 수정): 테라스를 지그재그로 가로지르는 손님, 안내 경로를 따라 오가는 행인
+            var customerE = Pedestrian("Pedestrian_E_Customer", npcs,
+                new[] { new Vector3(0.5f, 0f, 1.3f), new Vector3(-0.95f, 0f, 2.3f), new Vector3(0.5f, 0f, 3.3f), new Vector3(-0.95f, 0f, 4.3f), new Vector3(0.5f, 0f, 5.3f) },
+                PedestrianPath.LoopMode.PingPong, 0.7f, 12f, new Color(0.62f, 0.22f, 0.3f), m, PedestrianStyle.Casual);
+            var passerF = Pedestrian("Pedestrian_F_Passerby", npcs,
+                new[] { new Vector3(-0.85f, 0f, 6.6f), new Vector3(-0.85f, 0f, 0.9f) },
+                PedestrianPath.LoopMode.PingPong, 0.6f, 18f, new Color(0.3f, 0.45f, 0.35f), m, PedestrianStyle.Casual);
+            SetPathFloat(passerF, "pauseAtWaypoint", 1.5f);
             var chefB = Pedestrian("Pedestrian_B_Chef", npcs,
                 new[] { new Vector3(-2.2f, 0f, 7.6f), new Vector3(0.3f, 0f, 8.7f), new Vector3(-2.2f, 0f, 9.8f),
                         new Vector3(0.3f, 0f, 10.9f), new Vector3(-2.2f, 0f, 12.0f), new Vector3(0.2f, 0f, 12.9f) },
                 PedestrianPath.LoopMode.PingPong, 0.8f, 0f, new Color(0.55f, 0.32f, 0.25f), m, PedestrianStyle.Chef);
-            Bicycle("Bicycle_CrossStreet", Group("Vehicles", null), new Vector3(-7.0f, 0f, 17.0f), new Vector3(7.0f, 0f, 17.0f), m);
+            // 자전거 2대 (최종 수정): 서로 다른 차선, 반대 방향, 출발 시간 엇갈림
+            var vehicles = Group("Vehicles", null);
+            Bicycle("Bicycle_CrossStreet_A", vehicles, new Vector3(-7.0f, 0f, 16.75f), new Vector3(7.0f, 0f, 16.75f), m);
+            var bikeB = Bicycle("Bicycle_CrossStreet_B", vehicles, new Vector3(7.0f, 0f, 17.25f), new Vector3(-7.0f, 0f, 17.25f), m);
+            var bso2 = new SerializedObject(bikeB);
+            SetFloat(bso2, "startDelay", 3.5f);
+            SetFloat(bso2, "speed", 1.9f);
+            bso2.ApplyModifiedPropertiesWithoutUndo();
 
             // 빗자루 웨이터 (골목 북쪽에서 천천히 쓸다가, 쥐가 오면 추격)
             var porter = Pedestrian("Pedestrian_D_BroomWaiter", npcs,
@@ -89,22 +104,26 @@ namespace PetitParis.EditorTools
             // 사람들이 쥐를 알아챈다
             // 추격 속도는 쥐 달리기(0.36)와 비슷하게: 질주(0.6)나 숨기로 따돌릴 수 있다 (AI 리뷰 ISSUE-01)
             PetitParisGameplayKit.Awareness(waiterA, PetitParisText.ShoutRat, 1.0f, 0.38f, font, m);
+            PetitParisGameplayKit.Awareness(customerE, PetitParisText.ShoutRat, 0.9f, 0.36f, font, m);
+            PetitParisGameplayKit.Awareness(passerF, PetitParisText.ShoutRat, 0.9f, 0.36f, font, m);
             PetitParisGameplayKit.Awareness(chefB, PetitParisText.ShoutRat, 1.0f, 0.38f, font, m);
-            PetitParisGameplayKit.Awareness(kitchenChef, PetitParisText.ShoutChef, 1.1f, 0.4f, font, m,
+            PetitParisGameplayKit.Awareness(kitchenChef, PetitParisText.ShoutChef, 2.2f, 0.4f, font, m,
                 new Bounds(new Vector3(-4.55f, 0f, 22.2f), new Vector3(4.9f, 20f, 0.8f)));
+            PetitParisGameplayKit.ChefSwat(kitchenChef, m); // 높은 곳의 쥐는 주걱으로 (Awareness 다음에 만들어야 연결된다)
 
             // ── 게임 진행 ──
             var gameplay = Group("Gameplay", null);
             var cps = Group("Checkpoints", gameplay);
-            var flags = new Renderer[7];
+            var flags = new Renderer[8];
             flags[0] = Checkpoint("CP0_Start_WallCrack", cps, Spawn, SpawnYaw, m);
             flags[1] = Checkpoint("CP1_Terrace_UnderChair", cps, new Vector3(-1.5f, 0f, 6.08f), 0f, m);
             flags[2] = Checkpoint("CP2_Bakery_UnderBench", cps, new Vector3(-2.7f, 0f, 10.0f), 0f, m);
             flags[3] = Checkpoint("CP3_Alley_UnderBench", cps, new Vector3(-1.35f, 0f, 15.0f), 0f, m);
-            flags[4] = Checkpoint("CP4_Quai_KitchenDoor", cps, new Vector3(-1.9f, 0f, 23.9f), 270f, m);
+            flags[4] = Checkpoint("CP4_Alley_AfterBikeLane", cps, new Vector3(-0.5f, 0f, 17.95f), 0f, m); // 자전거 길을 건넌 직후 (최종 수정)
+            flags[5] = Checkpoint("CP5_Quai_KitchenDoor", cps, new Vector3(-1.9f, 0f, 23.9f), 270f, m);
             // 주방 체크포인트 2개 (ISSUE-19): 널빤지 시작 앞 바닥(요리사 통로 밖), 두 번째 상자 위
-            flags[5] = Checkpoint("CP5_Kitchen_PlankStart", cps, new Vector3(-2.1f, 0f, 21.1f), 270f, m);
-            flags[6] = Checkpoint("CP6_Kitchen_CrateB", cps, new Vector3(-4.35f, 0.6f, 21.5f), 270f, m);
+            flags[6] = Checkpoint("CP6_Kitchen_PlankStart", cps, new Vector3(-2.1f, 0f, 21.1f), 270f, m);
+            flags[7] = Checkpoint("CP7_Kitchen_CrateB", cps, new Vector3(-4.35f, 0.6f, 21.5f), 270f, m);
             var manager = cps.gameObject.AddComponent<CheckpointManager>();
             var chime = cps.gameObject.AddComponent<AudioSource>();
             var mso = new SerializedObject(manager);
@@ -538,6 +557,20 @@ namespace PetitParis.EditorTools
             var wine = m.LitTex("PP_WineCrate", PetitParisTextures.Wood(), new Color(0.72f, 0.45f, 0.32f));
             HideBox("WineCrate_Alley_E", props, new Vector3(0.42f, 0f, 19.05f), 0f, new Vector3(0.42f, 0.26f, 0.36f), wine, "와인 상자 안", m);
             var wicker = m.LitTex("PP_BreadBasket", PetitParisTextures.Rattan(), new Color(0.95f, 0.8f, 0.55f));
+            // 군데군데 숨을 곳 (최종 수정): 옆으로 눕힌 통조림 통·뒤집힌 양동이. 입구는 안내 경로 쪽
+            var tin = m.Lit("PP_TinCan", new Color(0.62f, 0.68f, 0.74f));
+            var bucket = m.Lit("PP_Bucket", new Color(0.78f, 0.3f, 0.24f));
+            Vector3 canSize = new Vector3(0.3f, 0.22f, 0.26f);
+            HideBox("TinCan_Terrace_W", props, new Vector3(-2.72f, 0f, 3.6f), 180f, canSize, tin, "통조림 통 안", m);
+            HideBox("TinCan_Terrace_E", props, new Vector3(0.45f, 0f, 2.5f), 0f, canSize, tin, "통조림 통 안", m);
+            HideBox("Bucket_Bakery_E", props, new Vector3(0.45f, 0f, 10.0f), 0f, canSize, bucket, "양동이 밑", m);
+            HideBox("TinCan_Bakery_W", props, new Vector3(-2.75f, 0f, 12.5f), 180f, canSize, tin, "통조림 통 안", m);
+            HideBox("TinCan_AlleySouth", props, new Vector3(0.4f, 0f, 15.8f), 0f, canSize, tin, "통조림 통 안", m);
+            HideBox("TinCan_Broom_E", props, new Vector3(0.42f, 0f, 20.0f), 0f, canSize, tin, "통조림 통 안", m);
+            HideBox("Bucket_Broom_W", props, new Vector3(-1.4f, 0f, 22.3f), 180f, canSize, bucket, "양동이 밑", m);
+            HideBox("TinCan_Quai", props, new Vector3(-0.9f, 0f, 25.15f), 0f, canSize, tin, "통조림 통 안", m);
+            HideBox("Bucket_Quai_Door", props, new Vector3(-3.6f, 0f, 24.2f), 180f, canSize, bucket, "양동이 밑", m);
+            HideBox("TinCan_Kitchen", props, new Vector3(-2.6f, 0f, 22.55f), 0f, canSize, tin, "통조림 통 안", m);
             HideBox("BreadBasket_Alley_W", props, new Vector3(-1.38f, 0f, 21.05f), 180f, new Vector3(0.4f, 0.24f, 0.38f), wicker, "빵 바구니 밑", m);
 
             Crate("Crate_A2", props, new Vector3(-1.45f, 0f, 20.0f), Vector3.one * 0.35f, 0f, m);

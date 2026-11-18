@@ -186,7 +186,8 @@ namespace PetitParis.EditorTools
                     foreach (var f in new[] { "goalVolume", "introPanel", "completePanel", "completeText", "objectiveMarker" })
                         report.Check(so.FindProperty(f)?.objectReferenceValue != null, $"GameFlow.{f} 연결", $"GameFlow.{f}가 비어 있습니다.");
                 }
-                report.Check(walkers.Length == 4, "보행자 4명 (웨이터, 빵집 셰프, 빗자루 웨이터, 주방 셰프)", $"보행자가 {walkers.Length}명입니다 (기획: 4명).", warnOnly: true);
+                report.Check(walkers.Length == 6, "보행자 6명 (테라스 3명, 빵집 셰프, 빗자루 웨이터, 주방 셰프)", $"보행자가 {walkers.Length}명입니다 (기획: 6명).", warnOnly: true);
+                report.Check(Object.FindAnyObjectByType<ChefSwat>() != null, "주방 요리사 주걱 반응(ChefSwat) 있음", "ChefSwat가 없습니다 (메뉴 3번).", warnOnly: true);
 
                 // AI 리뷰 P1 수정 사항 점검
                 var flowSo = flow != null ? new SerializedObject(flow) : null;
@@ -208,7 +209,7 @@ namespace PetitParis.EditorTools
                 if (plank != null)
                     report.Check(plank.transform.lossyScale.x >= 0.24f, $"주방 널빤지 폭 {plank.transform.lossyScale.x * 100f:0}cm (ISSUE-02)",
                         "주방 널빤지가 25cm보다 좁습니다.", warnOnly: true);
-                report.Check(checkpoints != null && checkpoints.Count >= 7, $"체크포인트 {checkpoints?.Count ?? 0}개 (주방 2개 포함, ISSUE-19)",
+                report.Check(checkpoints != null && checkpoints.Count >= 8, $"체크포인트 {checkpoints?.Count ?? 0}개 (자전거 길 뒤·주방 2개 포함)",
                     "주방 체크포인트가 없습니다 (메뉴 3번으로 다시 생성).", warnOnly: true);
                 var rigRoot = Object.FindAnyObjectByType<RatScaleRig>();
                 report.Check(rigRoot != null && rigRoot.GetComponent<RatFallRecovery>() != null, "큰 낙하 완충(RatFallRecovery) 있음 (ISSUE-02)",

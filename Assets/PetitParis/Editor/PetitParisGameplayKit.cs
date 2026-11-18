@@ -151,6 +151,34 @@ namespace PetitParis.EditorTools
             return aw;
         }
 
+        // ───────────────────────── 요리사 주걱 ─────────────────────────
+
+        /// <summary>높은 곳의 쥐를 내려치는 주걱 + 붉은 예고 그림자 (ChefSwat).</summary>
+        public static ChefSwat ChefSwat(PedestrianPath chef, MaterialLibrary m)
+        {
+            var root = Group("ChefSwat", chef.transform);
+            var tool = Box("Spatula", root, Vector3.zero, new Vector3(0.12f, 0.03f, 0.5f), m.Lit("PP_Spatula", new Color(0.55f, 0.36f, 0.2f)));
+            tool.GetComponent<BoxCollider>().isTrigger = true;
+            var rb = tool.AddComponent<Rigidbody>();
+            rb.isKinematic = true;
+            rb.useGravity = false;
+            var hazard = tool.AddComponent<FootstepHazard>();
+            var hso = new SerializedObject(hazard);
+            SetString(hso, "hazardName", PetitParisText.HazardSpatula);
+            hso.ApplyModifiedPropertiesWithoutUndo();
+            var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            q.name = "SwatMarker";
+            RemoveCollider(q);
+            q.transform.SetParent(root, false);
+            var r = q.GetComponent<MeshRenderer>();
+            r.sharedMaterial = m.Blob("PP_FallShadow", new Color(0.15f, 0f, 0f, 0.6f));
+            r.shadowCastingMode = ShadowCastingMode.Off;
+            var swat = chef.gameObject.AddComponent<ChefSwat>();
+            Wire(swat, ("chef", chef.GetComponent<PedestrianAwareness>()), ("tool", tool.transform), ("toolHazard", hazard),
+                ("marker", q.AddComponent<RatBlobShadow>()), ("sfx", root.gameObject.AddComponent<AudioSource>()));
+            return swat;
+        }
+
         // ───────────────────────── 빗자루 ─────────────────────────
 
         /// <summary>보행자 몸(Body)에 빗자루를 쥐여 준다. 빗자루 머리는 바닥을 쓸며, 닿으면 실패(FootstepHazard).</summary>

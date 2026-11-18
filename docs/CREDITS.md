@@ -10,7 +10,7 @@
 | 질감 (라탄, 줄무늬, 창문, 강물 등 아래 외부 질감으로 바꾸지 않은 것) | 외부 이미지 없음. `PetitParisTextures.cs`가 코드로 생성 | 자체 제작 | `Assets/PetitParis/Textures/Generated/` (빌더 실행 시 생성) |
 
 ## 외부 에셋 (2026-11-14 추가, 모두 무료)
-레포는 Private. 다운로드 원본 zip은 레포에 넣지 않고, 쓰는 파일만 `Assets/PetitParis/ThirdParty/<출처>/`에 둔다. 질감은 가져올 때 최대 1K (`PetitParisThirdPartyImport`).
+레포는 **Public** (2026-11-18 확인). 다운로드 원본 zip은 레포에 넣지 않고, 쓰는 파일만 `Assets/PetitParis/ThirdParty/<출처>/`에 둔다. 질감은 가져올 때 최대 1K (`PetitParisThirdPartyImport`).
 
 | 에셋 | 작가 | 라이선스 | 출처 URL | 위치 |
 |---|---|---|---|---|
@@ -26,4 +26,4 @@
 | Universal Animation Library (Standard): 걷기·대기 등 | Quaternius | CC0 | https://quaternius.com/packs/universalanimationlibrary.html | `ThirdParty/Quaternius/UniversalAnimationLibrary/` |
 | Downtown City MegaKit (Standard, 일부): 슬레이트 지붕·지붕창, 코니스, 창틀, 문틀, 문 | Quaternius | CC0 (`License_Standard.txt`) | https://quaternius.com/packs/downtowncitymegakit.html | `ThirdParty/Quaternius/DowntownCityMegaKit/` |
 | KayKit Restaurant Bits 1.0 (FREE): 주방 소품, 음식 | Kay Lousberg (www.kaylousberg.com) | CC0 (`License.txt`) | https://kaylousberg.itch.io/restaurant-bits | `ThirdParty/KayKit/RestaurantBits/` |
-| 센강 실사 영상 (선택, 강 건너 배경) | Mixkit — **사용한 영상 제목을 적는다** | Mixkit Stock Video **Free** License (상업 이용 가능·출처 표기 의무 없음·원본 파일 재배포 금지. 영상마다 Free/Restricted 확인) | **사용한 영상 URL을 적는다** (mixkit.co/free-stock-video/…) | `ThirdParty/Backdrops/SeineVideo.mp4` (.gitignore, 레포에 안 올림) |
+| 센강 실사 영상 (선택, 강 건너 배경): 센강 유람선에서 본 에펠탑 (원본 4K 11.9초 → 1080p로 줄이고, 해 질 녘 색 보정, 앞→뒤 반복 23.7초로 가공) | Mixkit — **사용한 영상 제목을 적는다** | Mixkit Stock Video **Free** License (상업 이용 가능·출처 표기 의무 없음·원본 파일 재배포 금지. 영상마다 Free/Restricted 확인) | **사용한 영상 URL을 적는다** (mixkit.co/free-stock-video/…) | `ThirdParty/Backdrops/SeineVideo.mp4` (.gitignore, 레포에 안 올림) |

@@ -499,10 +499,10 @@ namespace PetitParis.EditorTools
             TexBoxXZ("Seine_QuaiFace", quai, -40f, 40f, 25.9f, 26.1f, -1.0f, 0f, p.limestone, 1.2f, false);
             // 실제 센강 영상(선택)이 있으면 강 건너 풍경을 영상으로, 없으면 코드로 만든 원경
             bool video = AddSeineVideoIfPresent(quai);
+            FarSkyline("FarSkyline", quai, 63f, 70f, -38f, 38f, p, 7); // 영상이 있으면 영상 화면 뒤에 가려지고, 화면 양옆을 채운다
             if (!video)
             {
                 TexBoxXZ("FarBank", quai, -40f, 40f, 58f, 62f, -1f, 0.8f, p.farHaze, 4f, false);
-                FarSkyline("FarSkyline", quai, 63f, 70f, -38f, 38f, p, 7);
                 EiffelSilhouette("EiffelTower", quai, new Vector3(-9f, -1f, 60f), 30f, p.eiffel); // 난간 앞에서 정면 약간 왼쪽에 크게 (최종 수정)
             }
 
@@ -523,7 +523,7 @@ namespace PetitParis.EditorTools
         /// - 카메라가 고정된(삼각대) 영상만 쓴다. 움직이는 영상(드론·배·패닝)은 VR에서 멀미를 일으킨다
         /// - 원본 영상 파일은 라이선스상 재배포하지 않는다 (.gitignore). 출처는 docs/CREDITS.md에 적는다
         /// </summary>
-        const float SeineVideoHorizon = 0.4f;   // 영상 속 수평선 높이 (아래에서 비율). 영상에 맞게 조절
+        const float SeineVideoHorizon = 0.17f;  // 영상 속 건너편 강변(물가)의 높이 (아래에서 비율). 현재 영상(배 위에서 본 에펠탑) 기준 0.17
         const float SeineVideoDistanceZ = 62f;  // 화면 위치 (CP5 난간에서 약 37m)
         const float SeineVideoWidth = 110f;
 

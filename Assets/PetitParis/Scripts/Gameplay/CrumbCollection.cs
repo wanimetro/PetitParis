@@ -41,6 +41,9 @@ namespace PetitParis
         Vector3 popupStart;
         Color popupColor = Color.white;
 
+        /// <summary>비둘기가 쪼아 간 조각을 다시 주우려면 쥐가 이 거리(월드 m) 밖으로 한 번 나가야 한다.</summary>
+        public const float LeaveRadius = 0.3f;
+
         public int Score { get; private set; }
         public int CollectedCount { get; private set; }
         public int GoldenCount { get; private set; }
@@ -106,7 +109,14 @@ namespace PetitParis
                 var c = list[i];
                 if (c == null || !c.IsAvailable) continue;
                 float r = c.PickupRadius;
-                if ((c.transform.position - center).sqrMagnitude > r * r) continue;
+                float sq = (c.transform.position - center).sqrMagnitude;
+                if (c.WaitForLeave)
+                {
+                    // 비둘기가 쪼아 간 조각은 그 자리에서 바로 다시 줍지 않는다 (예전: 쪼여도 다음 프레임에 다시 주워 점수가 그대로였다)
+                    if (sq > LeaveRadius * LeaveRadius) c.WaitForLeave = false;
+                    continue;
+                }
+                if (sq > r * r) continue;
                 Pick(c);
             }
         }
@@ -165,7 +175,7 @@ namespace PetitParis
             Score -= c.Points;
             CollectedCount--;
             if (c.IsGolden) GoldenCount--;
-            c.Restore();
+            c.Restore(waitForLeave: true);
             return true;
         }
 

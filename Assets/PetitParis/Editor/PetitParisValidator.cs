@@ -188,6 +188,10 @@ namespace PetitParis.EditorTools
                 }
                 report.Check(walkers.Length == 6, "보행자 6명 (테라스 3명, 빵집 셰프, 빗자루 웨이터, 주방 셰프)", $"보행자가 {walkers.Length}명입니다 (기획: 6명).", warnOnly: true);
                 report.Check(Object.FindAnyObjectByType<ChefSwat>() != null, "주방 요리사 주걱 반응(ChefSwat) 있음", "ChefSwat가 없습니다 (메뉴 3번).", warnOnly: true);
+                int flocks = Object.FindObjectsByType<PigeonFlock>(FindObjectsSortMode.None).Length;
+                report.Check(flocks > 0 && PigeonFlock.PeckRadius > PigeonFlock.RingRadius,
+                    $"비둘기 무리 {flocks}개, 쪼기 거리 {PigeonFlock.PeckRadius}m > 둘러싸는 원 {PigeonFlock.RingRadius}m",
+                    $"비둘기 무리가 없거나 쪼기 거리({PigeonFlock.PeckRadius}m)가 둘러싸는 원({PigeonFlock.RingRadius}m)보다 작아 가만히 있으면 쪼지 않습니다.", warnOnly: true);
 
                 // AI 리뷰 P1 수정 사항 점검
                 var flowSo = flow != null ? new SerializedObject(flow) : null;

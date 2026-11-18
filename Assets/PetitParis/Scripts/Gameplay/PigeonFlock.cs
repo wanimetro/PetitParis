@@ -35,6 +35,11 @@ namespace PetitParis
         [SerializeField, Range(1f, 8f)] float leash = 4f;
         [SerializeField, Range(0.5f, 10f)] float peckCooldown = 2.5f;
 
+        /// <summary>따라올 때 쥐를 둘러싸는 원의 반지름 (월드 m).</summary>
+        public const float RingRadius = 0.14f;
+        /// <summary>이 거리 안의 비둘기가 쥐를 쫀다 (월드 m). RingRadius보다 커야 한다.</summary>
+        public const float PeckRadius = 0.2f;
+
         RatDangerDetector danger;
         RatDashController dash;
         CrumbCollection crumbs;
@@ -103,7 +108,7 @@ namespace PetitParis
                         any = true;
                         // 쥐 주변 자기 자리(새마다 다른 각도)로 종종걸음
                         float a = seeds[i] * 2.4f;
-                        Vector3 goal = rat + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 0.14f;
+                        Vector3 goal = rat + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * RingRadius;
                         Vector3 step = goal - b.root.position;
                         step.y = 0f;
                         if (step.sqrMagnitude > 0.0004f)
@@ -111,7 +116,8 @@ namespace PetitParis
                             b.root.position += Vector3.ClampMagnitude(step, followSpeed * dt);
                             b.root.rotation = Quaternion.Slerp(b.root.rotation, Quaternion.LookRotation(d.sqrMagnitude > 1e-6f ? d.normalized : b.root.forward, Vector3.up), 1f - Mathf.Exp(-6f * dt));
                         }
-                        if (d.magnitude < 0.12f && Time.time >= nextPeck) Peck();
+                        // 쪼기 판정은 둘러싼 원(RingRadius)보다 넉넉해야 한다. 예전 0.12m는 원(0.14m)보다 작아서 가만히 있으면 쪼지 않았다
+                        if (d.magnitude < PeckRadius && Time.time >= nextPeck) Peck();
                         Peck(i, dt);
                     }
                     else

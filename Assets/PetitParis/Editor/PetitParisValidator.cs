@@ -320,9 +320,53 @@ namespace PetitParis.EditorTools
                     var route = gso.FindProperty("route");
                     report.Check(route != null && route.arraySize >= 2, $"안내 경로 점 {route?.arraySize ?? 0}개", "안내 경로(route)가 2점 미만입니다.");
                     report.Check(gso.FindProperty("arrow")?.objectReferenceValue != null, "화살표 오브젝트 연결", "RatGuideArrow.arrow가 비어 있습니다.");
+                    CheckRoutePassesDoorCheckpoint(report, route);
                 }
                 report.Check(RenderSettings.skybox != null && RenderSettings.fog, "해 질 녘 하늘·안개 설정", "Skybox 또는 안개가 꺼져 있습니다 (메뉴 3번으로 다시 생성).", warnOnly: true);
             }
+        }
+
+        /// <summary>
+        /// 안내 경로가 뒷문을 여는 체크포인트(KitchenDoorGate.openAtCheckpoint)를 활성화 반경 안으로 지나가는지.
+        /// 지나가지 않으면 화살표만 따라간 플레이어가 닫힌 문 앞에서 막힌다 (2026-11-19 최종 빌드 점검에서 발견).
+        /// </summary>
+        static void CheckRoutePassesDoorCheckpoint(Report report, SerializedProperty route)
+        {
+            var gate = Object.FindAnyObjectByType<KitchenDoorGate>();
+            var cpm = Object.FindAnyObjectByType<CheckpointManager>();
+            if (gate == null || cpm == null || route == null || route.arraySize < 2) return;
+            var cso = new SerializedObject(cpm);
+            var cps = cso.FindProperty("checkpoints");
+            float radius = cso.FindProperty("activationRadius")?.floatValue ?? 0.3f;
+            int doorIndex = new SerializedObject(gate).FindProperty("openAtCheckpoint")?.intValue ?? -1;
+
+            var pts = new List<Vector2>();
+            for (int i = 0; i < route.arraySize; i++)
+                if (route.GetArrayElementAtIndex(i).objectReferenceValue is Transform t) pts.Add(new Vector2(t.position.x, t.position.z));
+
+            float DistanceToRoute(Vector2 p)
+            {
+                float best = float.MaxValue;
+                for (int i = 0; i + 1 < pts.Count; i++)
+                {
+                    Vector2 a = pts[i], ab = pts[i + 1] - a;
+                    float u = ab.sqrMagnitude > 1e-8f ? Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude) : 0f;
+                    best = Mathf.Min(best, (p - (a + ab * u)).magnitude);
+                }
+                return best;
+            }
+
+            var missed = new List<string>();
+            for (int i = 0; i < cps.arraySize; i++)
+            {
+                if (!(cps.GetArrayElementAtIndex(i).objectReferenceValue is Transform cp)) continue;
+                float d = DistanceToRoute(new Vector2(cp.position.x, cp.position.z));
+                if (i == doorIndex)
+                    report.Check(d <= radius, $"안내 경로가 뒷문 체크포인트 CP{i}({cp.name})를 지나감 ({d:F2}m ≤ {radius:F2}m)",
+                        $"안내 경로가 뒷문을 여는 CP{i}({cp.name})에서 {d:F2}m 떨어져 있습니다 (반경 {radius:F2}m). 화살표를 따라가면 닫힌 문 앞에서 막힙니다 → PetitParisLevelBuilder routePoints에 CP{i} 위치 추가.");
+                else if (d > radius) missed.Add($"CP{i} {d:F2}m");
+            }
+            if (missed.Count > 0) report.Info($"안내 경로가 반경 밖으로 지나가는 체크포인트 (진행에는 영향 없음): {string.Join(", ", missed)}");
         }
 
         static void CheckProject(Report report)

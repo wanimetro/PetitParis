@@ -259,7 +259,9 @@ namespace PetitParis.EditorTools
                 new Vector3(-1.5f, 0f, 6.08f), new Vector3(-1.15f, 0f, 6.6f), new Vector3(-1.3f, 0f, 7.6f), new Vector3(-2.45f, 0f, 9.4f),
                 new Vector3(-2.7f, 0f, 10.0f), new Vector3(-2.4f, 0f, 11.0f), new Vector3(-1.2f, 0f, 12.6f), new Vector3(-0.5f, 0f, 13.8f),
                 new Vector3(-1.1f, 0f, 14.6f), new Vector3(-1.35f, 0f, 15.0f), new Vector3(-0.5f, 0f, 15.8f), new Vector3(-0.5f, 0f, 18.2f),
-                new Vector3(-0.5f, 0f, 21.0f), new Vector3(-0.5f, 0f, 23.5f), new Vector3(-1.9f, 0f, 23.9f), new Vector3(-2.95f, 0f, 23.5f),
+                new Vector3(-0.5f, 0f, 21.0f), new Vector3(-0.5f, 0f, 23.5f),
+                new Vector3(-0.3f, 0f, 25.3f), // CP5 센강 난간 — 여기 닿아야 뒷문이 열린다 (경로가 난간을 건너뛰면 화살표가 닫힌 문으로 안내함)
+                new Vector3(-1.9f, 0f, 23.9f), new Vector3(-2.95f, 0f, 23.5f),
                 new Vector3(-2.95f, 0f, 22.5f), new Vector3(-2.2f, 0f, 22.0f), new Vector3(-2.15f, 0f, 21.5f), new Vector3(-5.55f, 0f, 21.5f),
                 new Vector3(-5.5f, 0f, 21.0f), CheeseGoal,
             };

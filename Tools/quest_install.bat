@@ -2,21 +2,26 @@
 chcp 65001 >nul
 rem PETIT PARIS - Quest 2/3 USB 설치 스크립트 (헤드셋 확인 -> 설치 -> 오디오 권한 -> 실행)
 rem 사용법: 더블클릭, 또는  tools\quest_install.bat [apk 경로]
-rem 기본 APK: Builds\PetitParis_final.apk
+rem 기본 APK: 이 파일과 같은 폴더의 PetitParis_final.apk (릴리스에서 같이 받은 경우),
+rem          없으면 저장소의 Builds\PetitParis_final.apk
 rem 마지막에 창이 멈추지 않게 하려면  set NOPAUSE=1  후 실행.
 setlocal EnableDelayedExpansion
 
 set "PKG=com.DefaultCompany.PetitParis"
 set "APK=%~1"
+if "%APK%"=="" if exist "%~dp0PetitParis_final.apk" set "APK=%~dp0PetitParis_final.apk"
 if "%APK%"=="" set "APK=%~dp0..\Builds\PetitParis_final.apk"
 
 rem --- adb 찾기 (PATH -> Unity 6000.6.9f1 -> Android SDK) ---
 set "ADB="
-for /f "delims=" %%p in ('where adb 2^>nul') do if not defined ADB set "ADB=%%p"
+if exist "%~dp0adb.exe" set "ADB=%~dp0adb.exe"
+if not defined ADB for /f "delims=" %%p in ('where adb 2^>nul') do if not defined ADB set "ADB=%%p"
 if not defined ADB if exist "C:\Program Files\Unity\Hub\Editor\6000.6.9f1\Editor\Data\PlaybackEngines\AndroidPlayer\SDK\platform-tools\adb.exe" set "ADB=C:\Program Files\Unity\Hub\Editor\6000.6.9f1\Editor\Data\PlaybackEngines\AndroidPlayer\SDK\platform-tools\adb.exe"
 if not defined ADB if exist "%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe" set "ADB=%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe"
 if not defined ADB (
-  echo [실패] adb.exe를 찾지 못했습니다. Unity Android Build Support를 설치하세요.
+  echo [실패] adb.exe를 찾지 못했습니다.
+  echo   Android SDK Platform-Tools를 받아 압축을 풀고 adb.exe를 이 파일과 같은 폴더에 두거나 PATH에 추가하세요:
+  echo   https://developer.android.com/tools/releases/platform-tools
   goto :fail
 )
 echo adb: %ADB%

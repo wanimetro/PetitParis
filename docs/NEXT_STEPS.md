@@ -20,7 +20,11 @@
 - **고침: 안내 화살표가 센강 난간(CP5)을 건너뛰고 닫힌 뒷문으로 안내** → 화살표만 따라가면 문 앞(-2.95, 23.09)에서 막힘. 원인: CP5를 난간 앞으로 옮길 때(25b2546) `GuideRoute`를 안 고침. `routePoints`에 CP5(-0.3, 0, 25.3) 추가 → 화살표가 난간을 가리키고, 닿으면 문이 열림 (확인함). Validate 항목 추가: "안내 경로가 뒷문 체크포인트를 지나감" (FAIL), 반경 밖 체크포인트는 INFO (CP6 0.40m — 리스폰 지점일 뿐 진행에는 영향 없음)
 - 빌드 설정: Android / PetitParisVR만 / IL2CPP ARM64 / Development 끔 / PETIT PARIS — 모두 맞음. `Builds/PetitParis_final.apk` (54MB) 빌드 성공, 에러 0, 경고 5 (SSAO는 PC_Renderer 것, 나머지는 선택 권장)
   - 빌드하면 ProjectSettings `preloadedAssets`에 XR·Input 설정이 들어감 → 커밋하지 않고 되돌림 (빌드 때마다 다시 들어감)
-- **미검증: Quest 2 실기기** — USB로 헤드셋이 인식되지 않아 (adb devices 비어 있음, 장치 관리자에도 없음) 설치·72fps·소리 확인 못 함. 설치: 헤드셋 켜고 케이블 연결 → "USB 디버깅 허용" → `adb install -r Builds/PetitParis_final.apk` (adb는 Unity 내장 SDK `.../AndroidPlayer/SDK/platform-tools/adb.exe`). FPS: `adb logcat -s VrApi` 의 `FPS=` 값
+- **Quest 2 실기기 설치·실행 (2026-11-19, adb 로그로 확인)** — `adb devices`에 `device`로 인식, `PetitParis_final.apk` 설치 성공·실행.
+  - FPS(VrApi, 약 30초): 시작 직후 2회(첫 프레임 1, 약 5초 뒤 45)를 빼면 72/72 유지. App≈10ms, GPU 사용률 약 80%, Stale 거의 0
+  - 에러: `E/Unity`는 `AssetPackManager` ClassNotFound 1건뿐 (Play Asset Delivery 미사용이라 무해). 크래시 없음
+  - 소리: `dumpsys audio`에서 AAudio 플레이어 `state:started, mutedState:none`, PLAY_AUDIO allow → 출력은 되고 있음. **귀로 듣는 확인과 게임 진행(끝까지 플레이)은 미검증**
+  - 다음부터 설치: `tools\quest_install.bat` (헤드셋 확인 → `install -r` → PLAY_AUDIO allow → 실행). 인자로 다른 APK 경로를 줄 수 있음
 - 미검증(이번 실행): 빵집 바게트 낙하 (무적 중이라 로그 없음, 11-18에 확인됨), 요리사 주걱 (무적 중)
 
 ## 0-0. 2026-11-18 최종 게임 수정 (미검증 — 메뉴 3번으로 씬 다시 만들고 확인)
